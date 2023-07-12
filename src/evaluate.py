@@ -7,8 +7,6 @@ import os
 2. 参考PandaLM，两两进行，使用win lose指标
 math那个的结果除了提取出来，还要进行降噪，得到真正可比的数值
 """
-import networkx as nx
-import matplotlib.pyplot as plt
 from copy import copy
 import argparse
 import re
@@ -158,7 +156,7 @@ def parse_answer(dataset:str, content:str, task_info:tuple=None):
 def parse_args():
     parser = argparse.ArgumentParser(description='agent')
     parser.add_argument('--dataset', type=str, default="mmlu")  # ["mmlu", "chess", "math"]
-    parser.add_argument('--metric', type=str, default="dag")    # ["dag", "acc"，"token"]
+    parser.add_argument('--metric', type=str, default="dag")    # ["dag", "acc"]
     # =========================================================================================
     parser.add_argument('--repeat', type=int, default=-1)     # -1: 全部 1~3: 表示对应的
     parser.add_argument('--experiment_type', type=str, default="main")  # 实验类型

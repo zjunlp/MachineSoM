@@ -9,7 +9,7 @@ Code for the paper [*Machine Society-of-Mind: Exploring Collaboration Mechanisms
 - Collaboration processes and interactive strategies: **debate and self-reflection**
 
 # News
-- [2023.07.12] MaSoM is released!
+- **[2023.07.12] MaSoM is released!**
 
 # Requirements
 ```bash

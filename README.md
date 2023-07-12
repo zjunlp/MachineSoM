@@ -5,8 +5,9 @@ Code for the paper [*Machine Society-of-Mind: Exploring Collaboration Mechanisms
 
 
 - The Society of Mind (SoM): the emergence of intelligence from collaborative and communicative computational modules, enabling humans to collaborate and complete complex tasks effectively
-- Societies of LLM agents with two **traits**: **easy-going and overconfident**
-- Collaboration processes and interactive strategies: **debate and self-reflection**
+- Societies of LLM agents with different **traits**: **easy-going and overconfident**
+- Collaboration Processes: **debate and self-reflection**
+- Interactive Strategies: when to collaborate, interact with whom
 
 # News
 - **[2023.07.12] MaSoM is released!**

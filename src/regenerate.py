@@ -1,10 +1,3 @@
-"""用于重新跑超长的case"""
-"""1. 扫描各个路径，对所有超长的case取并集"""
-"""2. 获取之前的数据格式"""
-"""3. 按照ratio再次采样，最好做一个启发式的，就是按照问题的答案来"""
-"""4. 重新跑"""
-"""5. 一切正常则保存数据，到时候直接读取即可，并且覆写文件"""
-
 import os
 import argparse
 from tqdm import tqdm
@@ -16,24 +9,20 @@ from utils import AgentDialogManagement
 import pickle
 from prompt import agent_roles_datasets, agent_characters, interaction_prompt
 
-"""历史文件存放的路径"""
 save_dir = "./results/main"
 
 class helper:
     dataset = None
     prompt = {
-        # 刚创建时用于指定agent的性格
         # Please remember it and don't forget it.
         "create_confident": "Imagine you are {} and {}. Please keep this in mind. If you understand please say ok only.",
         "create_temperate": "You are {} and {}. Please keep this in mind. If you understand please say ok only.",
     }
 
 def debate_start(idx: list, agent_center: AgentDialogManagement, task_info):
-    """给每一个agent发送同一个问题，不涉及到答案拼接"""
     # template
     content = interaction_prompt[helper.dataset]["question"].format(*task_info)
     if helper.dataset == "math":
-        """{{被解析为->{，因此需要变成两个，且整个只在发送问题的时候会产生"""
         content = content.replace("Put your answer in the form \\boxed{answer}", "Put your answer in the form \\boxed{{answer}}")
     for index in idx:
         assert agent_center.agents[index][-1]["role"] == "assistant"
@@ -42,13 +31,10 @@ def debate_start(idx: list, agent_center: AgentDialogManagement, task_info):
         )
 
 def debate_next(idx: list, agent_center: AgentDialogManagement, task_info):
-    """需要传入"""
-    """直接加载agent_center会出错，因为此时的-1就是user，因为是顺序添加的"""
     memory = []
     for cnt, index in enumerate(idx):
         assert agent_center.agents[index][-1][
                    "role"] == "assistant", f"{agent_center.agents[index][-1]['role']}!=assistant"
-        """将其它agent的内容添加到结尾"""
         other_index = idx[0:cnt] + idx[cnt + 1:]
         # template
         content = interaction_prompt[helper.dataset]["debate"][0]
@@ -69,12 +55,10 @@ def debate_next(idx: list, agent_center: AgentDialogManagement, task_info):
         agent_center.agents[index].append(memory[cnt])
 
 def debate_final(idx: list, agent_center: AgentDialogManagement, task_info):
-    """需要更新"""
     for cnt, index in enumerate(idx):
         agent_center.agents[index].append({"role": "user", "content": "debate final"})
 
 def reflection_start(idx: list, agent_center: AgentDialogManagement, task_info):
-    """需要更新"""
     for cnt, index in enumerate(idx):
         # template
         agent_center.agents[index].append({
@@ -84,17 +68,14 @@ def reflection_start(idx: list, agent_center: AgentDialogManagement, task_info):
         })
 
 def reflection_feedback(idx: list, agent_center: AgentDialogManagement, task_info):
-    """需要更新"""
     for cnt, index in enumerate(idx):
         agent_center.agents[index].append({"role": "user", "content": "reflection feedback"})
 
 def reflection_refine(idx: list, agent_center: AgentDialogManagement, task_info):
-    """需要更新"""
     for cnt, index in enumerate(idx):
         agent_center.agents[index].append({"role": "user", "content": "reflection refine"})
 
 def init(args):
-    """对一些参数进行一个初始化"""
     helper.dataset = args.dataset
     helper.prompt["debate"] = {
         "start": debate_start,
@@ -111,10 +92,8 @@ def _print(message):
     print(f"[{time.ctime()}] {message}")
 
 def create_configs(args):
-    _print("创建配置文件......")
     dataset = args.dataset
     turn = args.turn
-    """不同数据集中可能扮演不同的角色，比如棋手、数学家等"""
     agent_roles = agent_roles_datasets[dataset]
     agents_configs = {
         "3_harmony": [{"role": agent_roles["expert"], "character": agent_characters["temperate"]},
@@ -130,12 +109,9 @@ def create_configs(args):
                       {"role": agent_roles["expert"], "character": agent_characters["confident"]},
                       {"role": agent_roles["expert"], "character": agent_characters["confident"]}],
     }
-    """创建交互策略配置文件"""
-    _print(f"共有{2**turn}个交互策略")
     rounds_configs = []
     for i in range(0, 2**turn):
         situation = decimal_to_binary(i, turn)
-        """除去角色定义，这个就是向每个agent分发问题"""
         rounds_configs.append(
             [{
                 "debate": {"idx": [0, 1, 2], "fn": "start"},
@@ -143,17 +119,14 @@ def create_configs(args):
                 "wait": {"idx": [], "fn": ""}
             }]
         )
-        """每一位进行遍历"""
         for _ in situation:
             if _ == '1':
-                """反思"""
                 rounds_configs[-1].append({
                     "debate": {"idx": [], "fn": None},
                     "reflection": {"idx": [0, 1, 2], "fn": "start"},
                     "wait": {"idx": [], "fn": ""}
                 })
             elif _ == '0':
-                """辩论"""
                 rounds_configs[-1].append({
                     "debate": {"idx": [0, 1, 2], "fn": "next"},
                     "reflection": {"idx": [], "fn": None},
@@ -165,20 +138,15 @@ def create_configs(args):
     return agents_configs, rounds_configs
 
 def simulate(key, args, agent_config, round_config, invalid_case_id, candidate_case, data_loader:dataloader):
-    """这是因为每个组的候选共享"""
     cursor = [0 for _ in range(len(data_loader.database["ratio"]))]
     for case_id in range(len(invalid_case_id)):
-        # 对每个case进行一个模拟
-        """agent管理中心"""
         agent_center = AgentDialogManagement(
             prompt=helper.prompt,
             num_agents=args.agent,
             default_model=args.model,
             API_KEY=key,
         )
-        # 创建角色
         agent_center.generate_agents(agent_config=agent_config)
-        # 发送并确认
         agent_center.parse_message(
             idx="all",
             memory=agent_center.send_message(
@@ -186,37 +154,27 @@ def simulate(key, args, agent_config, round_config, invalid_case_id, candidate_c
             )
         )
         print(agent_center.agents)
-        # 取出case
-        """获取当前case属于哪个组"""
         group_id = data_loader.parse_group(invalid_case_id[case_id])
         item = candidate_case[group_id][cursor[group_id]]["task_info"]
         cursor[group_id] += 1
         print("item:", item)
-        # 开始对话
-        """用于标记对话是否没有超出最大长度"""
         FLAG_NORMAL = True
-        """+1是因为要算上question"""
         for round_index in tqdm(range(args.turn+1)):
-            """准备好用户的信息"""
             agent_center.prepare_for_message(
                 round_config=round_config[round_index],
                 task_info=item
             )
-            """对非wait的索引进行拼接"""
             idx = []
             idx.extend(round_config[round_index]["debate"]["idx"])
             idx.extend(round_config[round_index]["reflection"]["idx"])
-            """发送信息"""
             memory = agent_center.send_message(idx=idx)
             if memory is None:
-                """表示超出最大长度，结束当前case"""
                 FLAG_NORMAL = False
                 break
             agent_center.parse_message(
                 idx=idx,
                 memory=memory
             )
-        # 保存对话记录
         if FLAG_NORMAL:
             agent_center.save(path=f"{args.save_path}_case_{case_id+args.n_case}_replace_{invalid_case_id[case_id]}")
         else:
@@ -224,13 +182,13 @@ def simulate(key, args, agent_config, round_config, invalid_case_id, candidate_c
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Agent')
-    parser.add_argument('--dataset', type=str, default="mmlu")  # [mmlu, math, chess]
-    parser.add_argument('--total_role', type=int, default=4)  # 几个角色
-    parser.add_argument('--total_repeat', type=int, default=3)  # 总共几个重复的
-    parser.add_argument('--turn', type=int, default=3)  # 几轮
-    parser.add_argument('--api_idx', type=int, default=0)  # 从0开始
-    parser.add_argument('--api_account', type=str, default=None)  # 用哪个账号下面的api
-    parser.add_argument('--experiment_type', type=str, default="main")  # 实验类型
+    parser.add_argument('--dataset', type=str, default="mmlu") 
+    parser.add_argument('--total_role', type=int, default=4)  
+    parser.add_argument('--total_repeat', type=int, default=3) 
+    parser.add_argument('--turn', type=int, default=3) 
+    parser.add_argument('--api_idx', type=int, default=0)  
+    parser.add_argument('--api_account', type=str, default=None) 
+    parser.add_argument('--experiment_type', type=str, default="main") 
     # ==============================================================
     parser.add_argument('--n_case', type=int, default=50)
     parser.add_argument('--model', type=str, default="gpt-3.5-turbo")
@@ -245,27 +203,21 @@ def find_invalid_case(args):
     def _parse_case_id(file_name:str) -> int:
         items = file_name.split("_")
         return int(items[-2])
-    """查找超长case的"""
     dataset = args.dataset
-    """确定重复实验次数"""
     repeat = len(os.listdir(f"{save_dir}/{dataset}"))
     invalid_case = []
     for r in range(1, repeat+1):
-        """把文件夹下的文件存在file_list中"""
         dir_name = f"{save_dir}/{dataset}/{r}"
         files_list = os.listdir(dir_name)
         filter_files_list = []
-        """过滤出超长的文件名字"""
         for item in files_list:
             if "token.pkl" not in item and "shutdown.pkl" in item:
                 filter_files_list.append(item)
-        """解析"""
         for item in filter_files_list:
             invalid_case.append(_parse_case_id(item))
     return sorted(list(set(invalid_case)))
 
 def generate_case(args, invalid_case_id: list, num):
-    """生成新的case"""
     data_loader = dataloader(name=args.dataset)
     """
     [
@@ -277,10 +229,7 @@ def generate_case(args, invalid_case_id: list, num):
     return candidate, data_loader
 
 def merge_dataset(args, data_loader:dataloader, invalid_case_id, candidate_case):
-    """将其合并并转换"""
-    # step-1 加载原来的数据
     database = data_loader.database.copy()
-    # step-2 进行替换
     cursor = [0 for _ in range(len(data_loader.database["ratio"]))]
     for case_id in invalid_case_id:
         group = data_loader.parse_group(case_id)
@@ -289,55 +238,37 @@ def merge_dataset(args, data_loader:dataloader, invalid_case_id, candidate_case)
         database["answer"][case_id] = \
             candidate_case[group][cursor[group]]["answer"]
         cursor[group] += 1
-    # step-3 保存
     save_name = f"./results/{args.experiment_type}/{args.dataset}_data.pkl"
-    _print(f"正在保存 {save_name} ......")
     with open(save_name, "wb") as f:
         pickle.dump(database, f)
 
 def regenerate(args):
-    """step-1 找到不合法的case id，然后取并集"""
     invalid_case_id = find_invalid_case(args)
     if len(invalid_case_id) == 0:
-        _print("没有超长的，准备保存数据文件......")
-        """说明没有不合法的，全部都是合法的"""
-        """直接生成数据文件"""
         data_loader = dataloader(name=args.dataset)
         save_name = f"./results/{args.experiment_type}/{args.dataset}_data.pkl"
-        _print(f"正在保存 {save_name} ......")
         with open(save_name, "wb") as f:
             pickle.dump(data_loader.database, f)
         return
-    print("不合法的case_id:", invalid_case_id)
-    """step-2 根据case id，为每个case生成num个候选，注意，是按照他们所在的组进行，相同的组共享候选case"""
     candidate_case, data_loader = generate_case(args, invalid_case_id, num=3)
-    print("候选的case:",candidate_case)
-    """step-3 进行运行，暂时存到新的地方"""
-    # step-1 创建智能体的配置和交互策略的配置
     agents_configs, rounds_configs = create_configs(args)
     key = openai_api[args.api_account][args.api_idx]
     strategy_labels = [decimal_to_binary(i, args.turn) for i in range(2 ** args.turn)]
-    _print(f"使用的key为{key}")
     for r in range(1, args.total_repeat+1):
-        """重复实验"""
         for role in range(args.total_role):
-            """社会实验"""
             cur_agent_config = agents_configs[f"{role}_harmony"]
             for idx, cur_round_config in enumerate(rounds_configs):
-                """轮数实验"""
                 args.save_path = f"./results/{args.experiment_type}/{args.dataset}/{r}/" \
                                  f"{role}_harmony_{args.agent}_agents_{args.turn}_turns_{strategy_labels[idx]}_strategy"
                 simulate(
                     key=key, args=args, agent_config=cur_agent_config, round_config=cur_round_config,
                     invalid_case_id=invalid_case_id, candidate_case=candidate_case, data_loader=data_loader
                 )
-    """step-4 重新合并数据"""
     merge_dataset(
         args, data_loader, invalid_case_id, candidate_case
     )
 
 def test(args):
-    # print(find_invalid_case(args))
     print(
         generate_case(args, find_invalid_case(args))
     )
@@ -349,7 +280,6 @@ if __name__ == '__main__':
     regenerate(args)
 
 """
-nohup python -u regenerate.py --dataset math --api_idx 0 --api_account mikedeangpt4> math_regenerate.txt 2>&1 & 3912657
-nohup python -u regenerate.py --dataset mmlu --api_idx 0 --api_account mikedeangpt5> mmlu_regenerate.txt 2>&1 & 3912045
-python -u regenerate.py --dataset chess --api_idx 0 --api_account mikedeangpt5
+nohup python -u regenerate.py --dataset math --api_idx 0 --api_account gpttest1> math_regenerate.txt 2>&1 & 
+nohup python -u regenerate.py --dataset mmlu --api_idx 0 --api_account gpttest2> mmlu_regenerate.txt 2>&1 &
 """

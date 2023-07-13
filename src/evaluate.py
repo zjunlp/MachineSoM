@@ -26,7 +26,6 @@ def parse_answer(dataset:str, content:str, task_info:tuple=None):
             elif string[idx] == '}' and output_flag == 0:
                 results.append("".join(stack))
                 stack.clear()
-                """重新找下一个"""
                 idx = string_copy.find(flag, idx)
                 if idx == -1:
                     break
@@ -55,7 +54,7 @@ def parse_answer(dataset:str, content:str, task_info:tuple=None):
             else:
                 solution_by_re = None
         if len(matches) > 1:
-            print("mike:",(content,),"parse:", solution_by_re)
+            print("origin:",(content,),"parse:", solution_by_re)
         solution_by_item = [-1,-1,-1,-1]
         idx = 0
         for item in task_info[1:]:
@@ -109,9 +108,6 @@ def parse_answer(dataset:str, content:str, task_info:tuple=None):
             if len(matches) == 1:
                 return matches[0].lower()
             elif len(matches) > 1:
-                print(f"****选最后一个{matches[-1].lower()}*****")
-                print([content])
-                print("*"*100)
                 return matches[-1].lower()
             else:
                 for valid_case in none_responese:

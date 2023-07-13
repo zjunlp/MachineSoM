@@ -23,7 +23,6 @@ def simulate_openai():
     }
 
 def decimal_to_binary(decimal, length):
-    """length: 长度"""
     if decimal == 0:
         start = "0"
         for i in range(length - 1):
@@ -57,7 +56,7 @@ class AgentDialogManagement:
         self.agents = [
             [] for _ in range(num_agents)
         ]
-        self.tokens = [ # 统计token数
+        self.tokens = [ 
             [] for _ in range(num_agents)
         ]
         openai.api_key = API_KEY
@@ -79,7 +78,6 @@ class AgentDialogManagement:
         return idx
 
     def generate_agents(self, agent_config: list):
-        """初始化生成智能体"""
         assert len(agent_config) == self.num_agents
         for idx in range(self.num_agents):
             role, character = agent_config[idx]["role"], agent_config[idx]["character"]
@@ -98,7 +96,6 @@ class AgentDialogManagement:
             )
 
     def send_message(self, idx, model:str=None):
-        """将内容发送给openai，并传回来。idx为agent的索引。返回的是"""
         idx:list = self._check_idx(idx)
         if model is None:
             model = self.default_model
@@ -122,17 +119,14 @@ class AgentDialogManagement:
             except Exception as e:
                 self._print_log(e)
                 if "maximum context length is 4097 tokens" in str(e):
-                    self._print_log("超过最大长度！跳过！")
+                    self._print_log("maximum length exceeded! skip!")
                     return None
-                self._print_log(f"创建失败，等待{self.RETRY_TIME}秒，正在重新尝试...")
+                self._print_log(f"Please wait {self.RETRY_TIME} seconds and resend later...")
                 time.sleep(self.RETRY_TIME)
         return memory
 
     def parse_message(self, idx, memory: list):
-        """将回答的内容添加到agent"""
-        """memory的值就是send_message的值"""
         idx:list = self._check_idx(idx)
-        """检查是否匹配"""
         assert len(idx) == len(memory)
         for cnt, index in enumerate(idx):
             assert self.agents[index][-1]["role"] == "user"
@@ -146,13 +140,10 @@ class AgentDialogManagement:
             # print("parse:", self.agents[index])
 
     def _prepare_debate(self, idx, fn, task_info):
-        """准备debate的内容"""
-        """在之前已经check过了"""
         if fn is not None:
             self.prompt["debate"][fn](idx, self, task_info)
 
     def _prepare_reflection(self, idx, fn, task_info):
-        """准备reflection的内容"""
         if fn is not None:
             self.prompt["reflection"][fn](idx, self, task_info)
 
@@ -164,16 +155,13 @@ class AgentDialogManagement:
     def prepare_for_message(
         self,
         round_config: dict,
-        task_info=None          # 可以不用
+        task_info=None          
     ):
-        """搜集为下面的轮次进行准备"""
-        """直接将prompt添加"""
         self._prepare_debate(round_config["debate"]["idx"], round_config["debate"]["fn"], task_info)
         self._prepare_reflection(round_config["reflection"]["idx"], round_config["reflection"]["fn"], task_info)
         self._prepare_wait(round_config["wait"]["idx"], round_config["wait"]["fn"], task_info)
 
     def save(self, path):
-        """保存"""
         with open(f"{path}.pkl", "wb") as f:
             pickle.dump(self.agents, f)
         with open(f"{path}_token.pkl", "wb") as f:

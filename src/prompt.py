@@ -1,4 +1,3 @@
-# 智能体的角色(与数据集相关)
 agent_roles_datasets = {
     "mmlu":{
         "expert": "an expert in biology, chemistry, computer science, mathematics, physics"
@@ -11,13 +10,10 @@ agent_roles_datasets = {
     },
 }
 
-# 智能体的性格(与数据集无关)
 agent_characters = {
     "temperate": "are objective and unbiased, and you can be persuaded if other agent's answers make sense",
     "confident": "are confident in your answer and often persuades other agents to believe in you"
 }
-
-# reflection简单的，debate有多个prompt，可以考虑一下，question的话涉及到一些其他的，传递的参数
 
 interaction_prompt = {
     "mmlu":{

@@ -10,7 +10,7 @@ Code for the paper [*Machine Society-of-Mind: Exploring Collaboration Mechanisms
 - Interactive Strategies: when to collaborate, interact with whom
 
 # News
-- **[2023.07.12] MaSoM is released!**
+- **[2023.07.13] MaSoM is released!**
 
 # Requirements
 ```bash

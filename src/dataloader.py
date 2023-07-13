@@ -1,9 +1,3 @@
-"""
-主要用于返回数据，由于需要重复实验，因此需要确保顺序。
-因此会在最开始初始化的时候就将顺序打乱，后面保持一致。
-然后每次初始化的顺序都是一致的,
-有些可能需要根据不同的类型，然后创建不同的prompt
-"""
 from glob import glob
 import numpy as np
 import random
@@ -13,15 +7,10 @@ import pickle
 import tiktoken
 
 class dataloader:
-    """需要注意的是, database的task_info字段的值是这样的:[(), (), (), ...], 即里面的每个元素都是一个元组, 主要是为了question阶段方便"""
-    """这里的每个item也需要包含答案解析"""
     FILE_PATH = {
         "math": "./data/math/filter.pk",
         "chess": "./data/chess/chess.json",
         "mmlu": "./data/mmlu/data/test/high_school_*.csv"
-        # "math": "/data/zjt/emnlp23/iclr/data/math/filter.pk",
-        # "chess": "/data/zjt/emnlp23/iclr/data/chess-valid/task.json",
-        # "mmlu": "/data/zjt/emnlp23/iclr/data/mmlu/data/test/high_school_*.csv"
     }
     def __init__(self, name:str, n_case:int=50):
         assert name.lower() in ["math","chess","mmlu"], f"dataset {name} is not a valid name."
@@ -33,11 +22,8 @@ class dataloader:
             "mmlu": self._load_mmlu,
             "chess": self._load_chess
         }
-        """加载数据源"""
         self.database:dict = self.mapping[name]()
-        """默认是问题"""
         self.mode = "question"
-        """加载分词器"""
         self.tokenizer = tiktoken.get_encoding("cl100k_base")
 
     def set_mode(self, mode:str):
@@ -45,7 +31,6 @@ class dataloader:
         self.mode = mode
 
     def parse_group(self, case_id: int):
-        """判断当前的case属于哪个组的"""
         group = 0
         if case_id >= 0 and case_id < self.database["ratio"][1]:
             return group
@@ -59,11 +44,6 @@ class dataloader:
             assert False
 
     def regenerate(self, invalid_case_id:list, num: int=2):
-        """
-        生成备份的样本
-        :invalid_case_id: 不合法的样本id
-        :num: 为每个case准备多少个case备份，默认为2个
-
         return:
             {
                 "t1":{"task_info", "answer", "ratio", "item_size"}，
@@ -78,14 +58,12 @@ class dataloader:
             return sorted_keys
 
         def _sort_by_tokens(db, idx, return_value=True):
-            """按照token对索引进行排序"""
             value = {
                 "task_info": [],
                 "answer": []
             }
             pair = {}
             if self.dataset == "mmlu":
-                """读取出内容并进行分词"""
                 for ix in idx:
                     question = db.iloc[ix, 0]
                     a = db.iloc[ix, 1]
@@ -95,7 +73,6 @@ class dataloader:
                     pair[ix] = 0
                     for _ in (question, a, b, c, d):
                         pair[ix] += len(self.tokenizer.encode(_))
-                """排序"""
                 sorted_index = _sort_dict_by_value(pair)
                 if return_value:
                     """
@@ -113,10 +90,8 @@ class dataloader:
                     return value
                 return sorted_index
             elif self.dataset == "math":
-                """读取出内容并进行分词"""
                 for ix in idx:
                     pair[ix] = len(self.tokenizer.encode(db[ix]["problem"]))
-                """排序"""
                 sorted_index = _sort_dict_by_value(pair)
                 if return_value:
                     for ix in sorted_index:
@@ -128,7 +103,6 @@ class dataloader:
                 assert False
 
         def _math_reshape(d, types):
-            """按照level展平"""
             new = {}
             for level in range(3,6):
                 new[f"Level {level}"] = []
@@ -137,7 +111,6 @@ class dataloader:
             return new
 
         def generate_candidate():
-            """生成候选的id，按照token数从小到大排序，还要去重"""
             self._set_seed(seed=0)
             candidate_id = {}
             """
@@ -148,14 +121,10 @@ class dataloader:
             }
             """
             if self.dataset == "mmlu":
-                """获取数据文件"""
                 files_name = glob(dataloader.FILE_PATH["mmlu"])
                 for idx in range(len(self.database["ratio"])):
-                    """读取每个源的内容"""
                     db = pd.read_csv(files_name[idx])
-                    """去重"""
                     new_index = list(set(range(len(db)))-set(self.database["sampled_index"][idx]))
-                    """按照token数进行排序，并返回排序后的元素"""
                     value = _sort_by_tokens(db, new_index, return_value=True)
                     candidate_id[f"t{idx}"] = value
                 return candidate_id
@@ -165,20 +134,16 @@ class dataloader:
                     db = pickle.load(f)
                 db = _math_reshape(db, types)
                 for idx, level in enumerate(range(3, 6)):
-                    """读取当前源的内容"""
                     cur_db = db[f"Level {level}"]
-                    """去重"""
                     new_index = list(set(range(len(cur_db)))-set(self.database["sampled_index"][idx]))
-                    """按照token数进行排序，并返回排序后的元素"""
                     value = _sort_by_tokens(cur_db, new_index, return_value=True)
                     candidate_id[f"t{idx}"] = value
                 return candidate_id
             else:
                 assert False
 
-        """同样类型的case共享candidate，因为传入的index是按从小到大的顺序进行的"""
         """
-        返回：
+        return：
         [
             [{"task_info": (,), "answer": ""}, {"task_info": (,), "answer": ""}, {"task_info": (,), "answer": ""}, ...],
             [{"task_info": (,), "answer": ""}, {"task_info": (,), "answer": ""}, {"task_info": (,), "answer": ""}, ...],
@@ -186,13 +151,11 @@ class dataloader:
         """
         return_case = [[] for i in range(len(self.database["ratio"]))]
         if self.database["ratio"] is None:      # chess
-            """这个最好，直接随机采样就行，当然需要确保与之前的不重复"""
-            """chess数据集目前没有超长的问题"""
             assert self.dataset == "chess"
         else:                                   # math, mmlu
-            """这个需要按照那个分组的来"""
             assert self.dataset in ["math", "mmlu"]
-            """先对每个组生成备份的id，然后去取就行，到时候的排序就采用问题的token数量从小到大排序即可，candidate的格式如下：
+            """
+            candidate：
             {
                 "t0": {"task_info":[], "answer": []},
                 "t1": {"task_info":[], "answer": []},
@@ -201,11 +164,9 @@ class dataloader:
             """
             candidate = generate_candidate()
             pre_group = self.parse_group(invalid_case_id[0])
-            cur_cache = []  # 当前group的candidate
+            cur_cache = []  
             for case_id in invalid_case_id:
-                """先获取得到每个case所在的组别"""
                 group = self.parse_group(case_id)
-                """然后从candiate中找到对应组的，然后取出前num个case即可"""
                 if pre_group == group:
                     for _ in range(num):
                         cur_cache.append(
@@ -247,7 +208,7 @@ class dataloader:
         answer = []
         sampled_idx = random.sample(list(range(len(db))), self.n_case)
         for idx in sampled_idx:
-            database.append((db[idx]["input"],))    # 逗号别忘了
+            database.append((db[idx]["input"],))  
             answer.append(db[idx]["target"])
         return {
             "task_info": database,
@@ -264,7 +225,6 @@ class dataloader:
             c = df.iloc[ix, 3]
             d = df.iloc[ix, 4]
             answer = df.iloc[ix, 5]
-            # 返回问题、选项和答案
             return (question, a, b, c, d, answer)
 
         def parse_role(filename:str):
@@ -284,19 +244,16 @@ class dataloader:
                 assert False
 
         self._set_seed(seed=0)
-        """获取所有high_school的csv的文件"""
         files_name = glob(dataloader.FILE_PATH["mmlu"])
         ratio = [8, 8, 8, 8, 9, 9]
         assert len(files_name) == len(ratio)
         assert sum(ratio) == self.n_case
-        """按照需求进行读取"""
         database = []
         answer = []
         role = []
         sampled_indexes = []
         for idx in range(len(ratio)):
             db = pd.read_csv(files_name[idx])
-            """从db中选出ratio[idx]个样本"""
             sampled_idx = random.sample(list(range(len(db))), ratio[idx])
             sampled_indexes.append(sampled_idx)
             for i in sampled_idx:
@@ -308,7 +265,6 @@ class dataloader:
             "task_info": database,
             "answer": answer,
             "ratio": ratio,
-            # 一个item有多少个元素
             "item_size": len(database[-1]),
             "role": role,
             "sampled_index": sampled_indexes
@@ -317,7 +273,6 @@ class dataloader:
     def _load_math(self):
         types = ["algebra", "counting_and_probability", "geometry", "intermediate_algebra", "number_theory", "prealgebra", "precalculus"]
         def reshape(d):
-            """按照level展平"""
             new = {}
             for level in range(3,6):
                 new[f"Level {level}"] = []
@@ -330,7 +285,6 @@ class dataloader:
         db = reshape(db)
         # print(db)
         """
-        过滤完成后应该只有Level 3~5
         {
             "Level 1":{
                 "algebra":[
@@ -347,7 +301,6 @@ class dataloader:
             }
         }
         """
-        """分别对应Level 3~5"""
         ratio = [22, 22, 6]
         database = []
         answer = []
@@ -362,9 +315,7 @@ class dataloader:
             "task_info": database,
             "answer": answer,
             "ratio": ratio,
-            # 一个item有多少个元素
             "item_size": 1,
-            # 标识哪些id的样本被索引了
             "sampled_index": sampled_indexes
         }
 

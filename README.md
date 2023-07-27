@@ -1,5 +1,5 @@
 # MachineSoM
-Code for the paper [*Machine Society-of-Mind: Exploring Collaboration Mechanisms Among Large Language Models*](https://github.com/zjunlp/MachineSoM).
+Code for the paper [*Exploring Collaboration Mechanisms Among Large Language Model Agents*](https://github.com/zjunlp/MachineSoM).
 
 ![settings](figs/settings.jpg)
 

@@ -7,7 +7,7 @@ Code for the paper [*Exploring Collaboration Mechanisms Among Large Language Mod
 - The Society of Mind (SoM): the emergence of intelligence from collaborative and communicative computational modules, enabling humans to collaborate and complete complex tasks effectively
 - Societies of LLM agents with different **traits**: **easy-going and overconfident**
 - Collaboration Processes: **debate and self-reflection**
-- Interactive Strategies: when to collaborate, interact with whom
+- Interaction Strategies: when to interact, interact with whom
 
 # News
 - **[2023.07.13] MaSoM is released!**

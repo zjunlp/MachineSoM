@@ -22,7 +22,6 @@ Datasets: [MMLU](https://huggingface.co/datasets/cais/mmlu), [Chess Validity](ht
 # Citation
 ```bibtex
 @misc{MachineSoM2023,
-  author = {Jintian Zhang, Xin Xu, Ningyu Zhang, Huajun Chen},
   title = {{Machine Society-of-Mind: Exploring Collaboration Mechanisms Among Large Language Models}},
   month = jul,
   year = {2023},

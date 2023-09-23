@@ -1,5 +1,5 @@
 # MachineSoM
-Code for the paper [*Exploring Collaboration Mechanisms Among Large Language Model Agents*](https://github.com/zjunlp/MachineSoM).
+Code for the paper *Exploring Collaboration Mechanisms Among Large Language Model Agents*.
 
 ![settings](figs/settings.jpg)
 
@@ -19,12 +19,3 @@ pip install -r requirements.txt
 ```
 Datasets: [MMLU](https://huggingface.co/datasets/cais/mmlu), [Chess Validity](https://github.com/google/BIG-bench/blob/761845c22056c885429efd2cfcec345ae00c1de7/bigbench/benchmark_tasks/chess_state_tracking/synthetic_short/task.json), [MATH](https://github.com/hendrycks/math)
 
-# Citation
-```bibtex
-@misc{MachineSoM2023,
-  title = {{Machine Society-of-Mind: Exploring Collaboration Mechanisms Among Large Language Models}},
-  month = jul,
-  year = {2023},
-  url = {https://github.com/zjunlp/MachineSoM}
-}
-```

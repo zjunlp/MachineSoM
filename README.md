@@ -1,7 +1,7 @@
 # MachineSoM
 Code for the paper *Exploring Collaboration Mechanisms Among Large Language Model Agents*.
 
-![settings](figs/settings.jpg)
+![settings](figs/settings.png)
 
 
 - The Society of Mind (SoM): the emergence of intelligence from collaborative and communicative computational modules, enabling humans to collaborate and complete complex tasks effectively

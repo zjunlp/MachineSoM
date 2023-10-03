@@ -1,5 +1,5 @@
 # MachineSoM
-Code for the paper *Exploring Collaboration Mechanisms Among Large Language Model Agents*.
+Code for the paper *Exploring Collaboration Mechanisms for LLM Agents: A Social Psychology View*.
 
 ![settings](figs/setting.jpg)
 

@@ -1,4 +1,8 @@
+
 import os
+
+import networkx as nx
+import matplotlib.pyplot as plt
 from copy import copy
 import argparse
 import re
@@ -54,7 +58,7 @@ def parse_answer(dataset:str, content:str, task_info:tuple=None):
             else:
                 solution_by_re = None
         if len(matches) > 1:
-            print("origin:",(content,),"parse:", solution_by_re)
+            print("mike:",(content,),"parse:", solution_by_re)
         solution_by_item = [-1,-1,-1,-1]
         idx = 0
         for item in task_info[1:]:
@@ -85,6 +89,7 @@ def parse_answer(dataset:str, content:str, task_info:tuple=None):
         matches = extract_math(string=content)
         if len(matches)==0:
             return None
+            # assert False, f"math parse failed: \"{content}\""
         else:
             return matches[-1]
     elif dataset == "chess":
@@ -108,6 +113,8 @@ def parse_answer(dataset:str, content:str, task_info:tuple=None):
             if len(matches) == 1:
                 return matches[0].lower()
             elif len(matches) > 1:
+                print([content])
+                print("*"*100)
                 return matches[-1].lower()
             else:
                 for valid_case in none_responese:
@@ -130,22 +137,22 @@ def parse_answer(dataset:str, content:str, task_info:tuple=None):
 
 def parse_args():
     parser = argparse.ArgumentParser(description='agent')
-    parser.add_argument('--dataset', type=str, default="mmlu") 
-    parser.add_argument('--metric', type=str, default="acc")    
+    parser.add_argument('--dataset', type=str, default="mmlu")  # ["mmlu", "chess", "math"]
+    parser.add_argument('--metric', type=str, default="dag")    # ["dag", "acc"，"token", "behaviour", "group"]
     # =========================================================================================
-    parser.add_argument('--repeat', type=int, default=-1)     
-    parser.add_argument('--experiment_type', type=str, default="main") 
-    parser.add_argument('--turn', type=int, default=3)  
-    parser.add_argument('--agent', type=int, default=3) 
-    parser.add_argument('--role', type=str, default="[0,1,2,3]")  
+    parser.add_argument('--repeat', type=int, default=-1)     # -1: all 1~3: which repeat
+    parser.add_argument('--experiment_type', type=str, default="main")  # type
+    parser.add_argument('--turn', type=int, default=3)  # round
+    parser.add_argument('--agent', type=int, default=3) # the number of agents
+    parser.add_argument('--role', type=str, default="[0,1,2,3]")   # [0,1,2,3]
     parser.add_argument('--n_case', type=int, default=50)
-    parser.add_argument('--which_turn', type=int, default=-1)  
+    parser.add_argument('--which_turn', type=int, default=-1)   # Role(0,1) Question(2,3) Round1(4,5) Round2(6,7) Round3(8,9)
     return parser.parse_args()
 
 def check_args(args):
     assert args.dataset.lower() in ["mmlu","chess","math"], \
         "invalid dataset"
-    assert args.metric.lower() in ["dag", "acc", "token"], \
+    assert args.metric.lower() in ["dag", "acc", "token", "behaviour", "group"], \
         "invalid metric"
     assert args.repeat == -1 or args.repeat >= 1, \
         "invalid repeat"
@@ -184,7 +191,7 @@ def load_agent_file(args):
         assert str(args.repeat) in repeat_dir_name
         repeat_dir_name = [str(args.repeat)]
     invalid_case_id = []
-    if args.repeat not in [4,5]:
+    if args.repeat not in [4,5,6,7] and args.experiment_type == "main":
         invalid_case_id = find_invalid_case(args)
     print(invalid_case_id)
     replace_mapping = get_map_id(f"{file_dir}/{repeat_dir_name[0]}")
@@ -228,11 +235,7 @@ def _most_frequence_answer(answers:list):
     else:
         return num[0]
 
-def judge_answer(agent_answer:list, gt_answer, args):
-    math_pattern = [
-        " \\text{ positive integers, } 12 \\text{ negative integers}", " \\, \\text{cm}", "\\, \\text{cm}",
-        "^\\circ", "{\\text{Degree of }} g(x) = ", "°", " \\text{ cm}", "\\text{ cm}", "b = ", "r = ", "x = ", "m+n = ", "\\text{ degrees}", "x + y + z = "
-    ]
+def _judge_answer(args, gt_answer, agent_final_answer, agent_answer, math_pattern):
     def check_math_answer(answer):
         if answer == '{2^3 \\times 3^2 \\times 5 \\times 7}':
             return '2520'
@@ -240,34 +243,10 @@ def judge_answer(agent_answer:list, gt_answer, args):
             answer = answer.replace(_, "")
         # answer = answer.replace("^\\circ", "").replace(" \\, \\text{cm}","").replace("{\\text{Degree of }} g(x) = ","")
         answer = answer.replace("{", "").replace("}", "")
-        if answer in ["978,121", "99,940,009"]:
+        if answer in ["978,121", "99,940,009", "979,121"]:
             return answer.replace(",", "")
         return answer
 
-    def check_include(answers: list):
-        """['{12}', '12', '24']"""
-        for i in range(len(answers)):
-            if answers[i] is not None:
-                for _ in math_pattern:
-                    answers[i] = answers[i].replace(_, "")
-        for i in range(len(answers)):
-            for j in range(len(answers)):
-                if i != j and answers[i] is not None and answers[j] is not None and answers[i] in answers[j] and answers[i] != answers[j]:
-                    if "{" + answers[i] + "}" == answers[j]:
-                        answers[i] = answers[j]
-        return answers
-
-    # if args.dataset == "math":
-    #     # _agent_answer = 
-    #     agent_final_answer = _most_frequence_answer(answers=[check_math_answer(_) for _ in agent_answer])
-    #     print(agent_final_answer)
-    # else:
-    if args.dataset == "math":
-        agent_answer = check_include(agent_answer)
-    agent_final_answer = _most_frequence_answer(answers=agent_answer)
-    # print(agent_answer)
-    # print(agent_final_answer, gt_answer)
-    # assert False
     if agent_final_answer is None:
         return 0
     if args.dataset == "chess":
@@ -298,7 +277,52 @@ def judge_answer(agent_answer:list, gt_answer, args):
     else:
         assert False
 
+def judge_answer(agent_answer:list, gt_answer, args, weight=False, converge=False):
+    math_pattern = [
+        " \\text{ positive integers, } 12 \\text{ negative integers}", " \\, \\text{cm}", "\\, \\text{cm}",
+        "^\\circ", "{\\text{Degree of }} g(x) = ", "°", " \\text{ cm}", "\\text{ cm}", "b = ", "r = ", "x = ", "m+n = ", "\\text{ degrees}", "x + y + z = "
+    ]
+    
+    def check_include(answers: list):
+        """应对['{12}', '12', '24']"""
+        for i in range(len(answers)):
+            if answers[i] is not None:
+                for _ in math_pattern:
+                    answers[i] = answers[i].replace(_, "")
+        for i in range(len(answers)):
+            for j in range(len(answers)):
+                if i != j and answers[i] is not None and answers[j] is not None and answers[i] in answers[j] and answers[i] != answers[j]:
+                    # print("mike-check-before:", answers)
+                    if "{" + answers[i] + "}" == answers[j]:
+                        answers[i] = answers[j]
+        # print("mike-check-now:", answers)
+        return answers
+
+    # if args.dataset == "math":
+    #     # _agent_answer = 
+    #     agent_final_answer = _most_frequence_answer(answers=[check_math_answer(_) for _ in agent_answer])
+    #     print(agent_final_answer)
+    # else:
+    if args.dataset == "math":
+        agent_answer = check_include(agent_answer)
+    if not weight and not converge:
+        agent_final_answer = _most_frequence_answer(answers=agent_answer)
+        return _judge_answer(args, gt_answer, agent_final_answer, agent_answer, math_pattern)
+    elif weight==True and not converge:
+        value = 0
+        for ans in agent_answer:
+            value += _judge_answer(args, gt_answer, ans, agent_answer, math_pattern)
+        return value / 3
+    elif not weight and converge:
+        value = 0
+
+    # print(agent_answer)
+    # print(agent_final_answer, gt_answer)
+    # assert False
+    
 def evaluate_in_acc(args):
+    """
+    """
     results_value = []
     results_name = []
     database = load_dataset(args)
@@ -312,7 +336,7 @@ def evaluate_in_acc(args):
     for repeat in repeat_dir_name:
         for role in args.role:
             for strategy in strategies:
-                current_acc = 0
+                current_acc = []
                 for case_id in range(args.n_case):
                     origin_file_name = f"{role}_harmony_{args.agent}_agents_{args.turn}_turns_{strategy}_strategy_case_{case_id}.pkl"
                     origin_full_path = f"{file_dir}/{repeat}/{origin_file_name}"
@@ -321,8 +345,14 @@ def evaluate_in_acc(args):
                         agent_center = pickle.load(open(now_full_path, "rb"))
                     except:
                         print("shutdown:",now_full_path)
-                        current_acc += 0
-                        continue
+                        if args.experiment_type != "turn":
+                            assert False
+                        else:
+                            agent_center = pickle.load(open(
+                                f"{file_dir}/{repeat}/{role}_harmony_{args.agent}_agents_{args.turn}_turns_{strategy}_strategy_case_{case_id}_shutdown.pkl"
+                                , "rb"))
+                            for i in range(len(agent_center)):
+                                agent_center[i] = agent_center[i][0:-1]
                     agent_answers = []
                     gt_answers = database["answer"][case_id]
                     for agent_id in range(args.agent):
@@ -332,27 +362,271 @@ def evaluate_in_acc(args):
                             parse_answer(dataset=args.dataset, content=context["content"], task_info=database["task_info"][case_id])
                         )
                         # print(context, agent_answers[-1], gt_answers)
-                    current_acc += judge_answer(agent_answer=agent_answers, gt_answer=gt_answers, args=args)
+                    current_acc.append(judge_answer(agent_answer=agent_answers, gt_answer=gt_answers, args=args, weight=False))
+                    # current_acc += judge_answer(agent_answer=agent_answers, gt_answer=gt_answers, args=args)
                 results_name.append({'repeat': repeat, 'role': role, 'strategy': strategy})
                 results_value.append(current_acc)
     for i in range(len(results_value)//(2**args.turn)):
-        print(results_value[i*(2**args.turn):(i+1)*(2**args.turn)])
-        # print(results_name)
+        output = ""
+        for j in range(i*(2**args.turn),(i+1)*(2**args.turn)):
+            output += f"{round(sum(results_value[j]),2)},"
+        print("flag:", output)
+    # for i in range(len(results_value)//(2**args.turn)):
+    #     output = ""
+    #     for j in range(i*(2**args.turn),(i+1)*(2**args.turn)):
+    #         output += f"{sum(results_value[j][0:22])},"
+    #     print(output)
+    # print()
+    # for i in range(len(results_value)//(2**args.turn)):
+    #     output = ""
+    #     for j in range(i*(2**args.turn),(i+1)*(2**args.turn)):
+    #         output += f"{sum(results_value[j][22:44])},"
+    #     print(output)
+    # print()
+    # for i in range(len(results_value)//(2**args.turn)):
+    #     output = ""
+    #     for j in range(i*(2**args.turn),(i+1)*(2**args.turn)):
+    #         output += f"{sum(results_value[j][44:50])},"
+    #     print(output)
+    # output = []
+    # for i in range(len(results_value)//(2**args.turn)):
+    #     for j in range(i*(2**args.turn),(i+1)*(2**args.turn)):
+    #         output.append(results_value[j])
+    # pickle.dump(output, open(f"./cover/{args.dataset}_{args.repeat}_cover.pkl","wb"))
+
+def _behaviour(memory):
+    n_role, n_strategy, n_repeat, n_case, n_turn = memory.shape
+    results = torch.zeros([n_role, n_strategy, 2**n_turn], dtype=torch.int)
+    for role_id in range(n_role):
+        print(f"==========={role_id} Haromony===========")
+        for strategy_id in range(n_strategy):
+            for repeat_id in range(n_repeat):
+                for case_id in range(n_case):
+                    value = ""
+                    for turn_id in range(n_turn):
+                        if memory[role_id, strategy_id, repeat_id, case_id, turn_id] >= 0:
+                            value = f"{value}{memory[role_id, strategy_id, repeat_id, case_id, turn_id]}"
+                        else:
+                            break
+                            assert False
+                    if len(value) != n_turn:
+                        continue
+                    assert len(value) == n_turn, f"{value} != {n_turn}"
+                    flag = int(value, 2)
+                    results[role_id, strategy_id, flag] += 1
+            # print(decimal_to_binary(strategy_id, n_turn-1), ":", results[role_id, strategy_id].tolist())
+            print(results[role_id, strategy_id].tolist())
+
+def _check_acc(memory):
+    n_role, n_strategy, n_repeat, n_case, n_turn = memory.shape
+    for rp in range(n_repeat):
+        for ro in range(n_role):
+            answers = []
+            for st in range(n_strategy):
+                answer = 0
+                for case in range(n_case):
+                    answer += memory[ro, st, rp, case, -1].item()
+                answers.append(answer)
+            print(answers)
+    
+def behaviour(args, only_value=False):
+    n_role = 4 if args.experiment_type == "main" else 1
+    assert len(args.role) == n_role
+    n_repeat = 5
+    n_case = 50
+    n_turn = 3 if args.experiment_type == "main" else 4
+    n_turn += 1
+    n_strategy = 2 ** args.turn
+    print(n_role, n_strategy, n_repeat, n_case, n_turn)
+    # assert False
+    mem_results = torch.zeros([n_role, n_strategy, n_repeat, n_case, n_turn], dtype=torch.int)
+    mem_agent = torch.zeros([n_role, n_strategy, n_repeat, n_case, n_turn], dtype=torch.int)
+    mem_results[:] = -1
+    mem_agent[:] = -1
+    results_value = []
+    results_name = []
+    database = load_dataset(args)
+    file_dir = f"./results/{args.experiment_type}/{args.dataset}"
+    repeat_dir_name = os.listdir(file_dir)
+    strategies = [decimal_to_binary(_, args.turn) for _ in range(2 ** args.turn)]
+    if args.dataset == "mmlu":
+        repeat_dir_name = ['2','3','4','5','7']
+    elif args.dataset == "chess":
+        repeat_dir_name = ['2','3','4','5','6']
+    elif args.dataset == "math":
+        repeat_dir_name = ['1','2','3','4','5']
+    for repeat_id, repeat in enumerate(repeat_dir_name):
+        args.repeat = int(repeat)
+        file_mapping = load_agent_file(args)
+        for role_id, role in enumerate(args.role):
+            for strategy_id, strategy in enumerate(strategies):
+                current_acc = []
+                for case_id in range(args.n_case):
+                    origin_file_name = f"{role}_harmony_{args.agent}_agents_{args.turn}_turns_{strategy}_strategy_case_{case_id}.pkl"
+                    origin_full_path = f"{file_dir}/{repeat}/{origin_file_name}"
+                    now_full_path = file_mapping[origin_full_path]
+                    try:
+                        agent_center = pickle.load(open(now_full_path, "rb"))
+                    except:
+                        print("shutdown:", now_full_path)
+                        continue
+                        assert False
+                    agent_answers = []
+                    gt_answers = database["answer"][case_id]
+                    """0,1 2,3 [4,5 6,7 8,9]"""
+                    for turn_id, which_turn in enumerate(range(3, len(agent_center[0]), 2)):
+                        for agent_id in range(args.agent):
+                            context = agent_center[agent_id][which_turn]
+                            assert context["role"] == "assistant"
+                            agent_answers.append(
+                                parse_answer(dataset=args.dataset, content=context["content"], task_info=database["task_info"][case_id])
+                            )
+                            # print(context, agent_answers[-1], gt_answers)
+                        """[n_role, n_strategy, n_repeat, n_case, n_turn]"""
+                        """0/1"""
+                        print([n_role, n_strategy, n_repeat, n_case, n_turn])
+                        print([role_id, strategy_id, repeat_id, case_id, turn_id])
+                        mem_results[role_id, strategy_id, repeat_id, case_id, turn_id] = judge_answer(agent_answer=agent_answers, gt_answer=gt_answers, args=args, weight=False)
+                        """0/1/2/.../n_agent"""
+                        mem_agent[role_id, strategy_id, repeat_id, case_id, turn_id] = judge_answer(agent_answer=agent_answers, gt_answer=gt_answers, args=args, weight=True)*3
+                        # current_acc += judge_answer(agent_answer=agent_answers, gt_answer=gt_answers, args=args)
+                        agent_answers = []
+    if only_value:
+        return mem_results
+    else:
+        _behaviour(mem_results)
+    # _check_acc(mem_results)
+
+def evaluate_in_group(args):
+    def parse_group(_ratio, case_id: int):
+        group = 0
+        if case_id >= 0 and case_id < _ratio[1]:
+            return group
+        group = 1
+        while group + 1 < len(_ratio) and not (
+                case_id >= sum(_ratio[:group]) and case_id < sum(_ratio[:group + 1])):
+            group += 1
+        if case_id >= sum(_ratio[:group]) and case_id < sum(_ratio[:group + 1]):
+            return group
+        else:
+            assert False
+    assert args.dataset in ["mmlu", "math"]
+    ratio = {
+        "mmlu": [8, 8, 8, 8, 9, 9],
+        "math": [22, 22, 6]
+    }[args.dataset]
+    memory = behaviour(args, only_value=True)
+    n_role, n_strategy, n_repeat, n_case, n_turn = memory.shape
+    assert n_case == sum(ratio)
+    results = torch.zeros([n_strategy, len(ratio)], dtype=torch.int)
+    for role_id in range(n_role):
+        for strategy_id in range(n_strategy):
+            for repeat_id in range(n_repeat):
+                for case_id in range(n_case):
+                    group_id = parse_group(_ratio=ratio, case_id=case_id)
+                    results[strategy_id, group_id] += memory[role_id, strategy_id, repeat_id, case_id, -1]
+    print(results.tolist())
+
+def dag_evaluation(matrix):
+    relations = []
+    for i in range(matrix.shape[0]):
+        for j in range(i+1, matrix.shape[0]):
+            delta = matrix[i] - matrix[j]
+            tie = len(torch.where(delta==0)[0])
+            win = len(torch.where(delta==1)[0])
+            lose = len(torch.where(delta==-1)[0])
+            if win > lose:
+                relations.append((i+1,j+1))
+            elif win < lose:
+                relations.append((j+1,i+1))
+    return relations
+
+def draw(relations, idx, dataset, args):
+    G = nx.DiGraph()
+    G.add_nodes_from(list(range(1,2**args.turn+1)))
+    G.add_edges_from(relations)
+    labels = {}
+    for i in range(2**args.turn):
+        labels[i+1] = decimal_to_binary(i, args.turn)
+    print(labels)
+    # labels = {'A': 'Node A', 'B': 'Node B', 'C': 'Node C', 'D': 'Node D', 'E': 'Node E', 'F': 'Node F', 'G': 'Node G', 'H': 'Node H'}
+    nx.set_node_attributes(G, labels, 'label')
+
+    pos = nx.spring_layout(G) 
+    nx.draw_networkx(G, pos=pos, with_labels=True, labels=nx.get_node_attributes(G, 'label'), node_color='lightblue', node_size=500, font_size=10, edge_color='gray', arrows=True)
+
+    plt.axis('off')
+    plt.savefig(f'./dag/{dataset}_{idx}.png')
+    plt.cla()
+
+def draw_dag(relations, idx, dataset):
+    G = nx.DiGraph()
+    G.add_nodes_from(range(1, 9))
+    G.add_edges_from(relations)
+    pos = nx.spring_layout(G) 
+    nx.draw_networkx(G, pos=pos, with_labels=True, node_color='lightblue', node_size=500, font_size=10,
+                     edge_color='gray', arrows=True)
+    plt.axis('off')
+    plt.savefig(f'./dag/{dataset}_{idx}.png')
+    plt.cla()
+
+def evaluate_in_dag(args):
+    results_value = []
+    results_name = []
+    database = load_dataset(args)
+    file_mapping = load_agent_file(args)
+    file_dir = f"./results/{args.experiment_type}/{args.dataset}"
+    repeat_dir_name = os.listdir(file_dir)
+    strategies = [decimal_to_binary(_, args.turn) for _ in range(2 ** args.turn)]
+    if args.repeat != -1:
+        assert str(args.repeat) in repeat_dir_name
+        repeat_dir_name = [str(args.repeat)]
+    for repeat in repeat_dir_name:
+        for role in args.role:
+            for strategy in strategies:
+                current_acc = []
+                for case_id in range(args.n_case):
+                    origin_file_name = f"{role}_harmony_{args.agent}_agents_{args.turn}_turns_{strategy}_strategy_case_{case_id}.pkl"
+                    origin_full_path = f"{file_dir}/{repeat}/{origin_file_name}"
+                    now_full_path = file_mapping[origin_full_path]
+                    agent_center = pickle.load(open(now_full_path, "rb"))
+                    agent_answers = []
+                    gt_answers = database["answer"][case_id]
+                    for agent_id in range(args.agent):
+                        context = agent_center[agent_id][args.which_turn]
+                        assert context["role"] == "assistant"
+                        agent_answers.append(
+                            parse_answer(dataset=args.dataset, content=context["content"],
+                                         task_info=database["task_info"][case_id])
+                        )
+                        # print(context, agent_answers[-1], gt_answers)
+                    current_acc.append(judge_answer(agent_answer=agent_answers, gt_answer=gt_answers, args=args))
+                # results_name.append({'repeat': repeat, 'role': role, 'strategy': strategy})
+                results_value.append(current_acc)
+
+    results_value = torch.as_tensor(results_value)
+    for i in range(len(results_value) // (2 ** args.turn)):
+        relations = dag_evaluation(matrix=results_value[i * (2 ** args.turn):(i + 1) * (2 ** args.turn)])
+        print(relations)
+        draw(relations, i, args.dataset, args)
+        # print(results_value[i * (2 ** args.turn):(i + 1) * (2 ** args.turn)])
 
 def evaluate(args):
     func_mapping ={
+        "dag": evaluate_in_dag,
         "acc": evaluate_in_acc,
+        "token": evaluate_in_token,
+        "behaviour": behaviour,
+        "group": evaluate_in_group,
     }
     func_mapping[args.metric](args=args)
 
 def test():
-    """mmlu"""
     # print(parse_answer(
     #     dataset="mmlu",
     #     task_info=("question", "8.05", "7.6", "3.95", "3.37"),
     #     content="After examining the solutions provided by other agents, I agree with their approach and reasoning. Here is an updated step-by-step analysis:\n\n1. We need to determine the highest amount of rainfall that would place the month among the 10% driest months.\n2. To do this, we calculate the z-score corresponding to the 10th percentile of the normal distribution.\n3. Using a standard normal distribution table or calculator, we find that the z-score for the 10th percentile is approximately -1.28.\n4. Next, we use the formula X = μ + (z * σ) to find the corresponding rainfall value.\n5. Plugging in the given values, we have X = 6 + (-1.28 * 1.6).\n6. Simplifying the equation, X ≈ 3.952 inches.\n7. Comparing the answer choices:\n   A) 8.05\n   B) 7.6\n   C) 3.95 (X)\n   D) 3.37\n8. Based on our calculations, the correct answer is C) 3.95 inches.\n\nSo, the final answer is C) 3.95 inches."))
 
-    """chess"""
     # print(
     #     parse_answer(
     #         dataset="chess",
@@ -371,12 +645,65 @@ def test():
     for answers in [[None, None, 1], [1, 1, 2], [1, 2, 3], [1, 1, 2, 2], [None, None, 1, 1]]:
         print(_most_frequence_answer(answers))
 
+def cover():
+    dataset = ["math","mmlu","chess"]
+    repeat = [1,2,3,4,5]
+    n_society = 4
+    n_strategy = 8
+    for ds in dataset:
+        data = [[[] for j in range(n_strategy)] for i in range(n_society)]   
+        for r in repeat:
+            file_name = f"./cover/{ds}_{r}_cover.pkl"
+            output = pickle.load(open(file_name,"rb"))
+            for i in range(n_society):
+                for j in range(n_strategy):
+                    # print(output[i*n_strategy+j])
+                    data[i][j].append(torch.as_tensor(output[i*n_strategy+j]))
+        for i in range(n_society):
+            output = ""
+            for j in range(n_strategy):
+                assert len(data[i][j]) == len(repeat)
+                value = torch.zeros([len(data[i][j][0])])
+                for _ in range(len(repeat)):
+                    value += data[i][j][_]
+                output += f"{torch.sum(torch.where(value>=5,1,0)).item()},"
+            print(output)
+        print()
+    
 if __name__ == '__main__':
+    # cover()
+    # assert False
     args = parse_args()
     args = check_args(args)
     evaluate(args)
     # test()
 """
-python evaluate.py --dataset chess --metric acc --repeat 1
-python evaluate.py --dataset math --metric acc --repeat 1
+python evaluate.py --dataset chess --metric behaviour --turn 4 --experiment_type turn --role [1]
+
+python evaluate.py --dataset mmlu --metric group --turn 3
+python evaluate.py --dataset math --metric group --turn 3
+
+python evaluate.py --dataset chess --metric behaviour --turn 3
+python evaluate.py --dataset mmlu --metric behaviour --turn 3
+
+--which_turn', type=int, default=-1)   # 
+
+python evaluate.py --dataset chess --metric acc --repeat 1 --which_turn -3
+python evaluate.py --dataset chess --metric acc --repeat 2 --which_turn -3
+python evaluate.py --dataset chess --metric acc --repeat 3 --which_turn -3
+python evaluate.py --dataset chess --metric acc --repeat 4 --which_turn -3
+python evaluate.py --dataset chess --metric acc --repeat 5 --which_turn -3
+
+python evaluate.py --dataset mmlu --metric acc --repeat 1 --which_turn -3
+python evaluate.py --dataset mmlu --metric acc --repeat 2 --which_turn -3
+python evaluate.py --dataset mmlu --metric acc --repeat 3 --which_turn -3
+python evaluate.py --dataset mmlu --metric acc --repeat 4 --which_turn -3
+python evaluate.py --dataset mmlu --metric acc --repeat 5 --which_turn -3
+
+python evaluate.py --dataset math --metric acc --repeat 1 --which_turn -5
+python evaluate.py --dataset math --metric acc --repeat 2 --which_turn -5
+python evaluate.py --dataset math --metric acc --repeat 3 --which_turn -5
+python evaluate.py --dataset math --metric acc --repeat 4 --which_turn -5
+python evaluate.py --dataset math --metric acc --repeat 5 --which_turn -5
+
 """

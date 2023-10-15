@@ -1,3 +1,4 @@
+
 import argparse
 import pickle
 import os
@@ -5,12 +6,12 @@ from utils import decimal_to_binary
 import numpy as np
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="token")
-    parser.add_argument("--repeat", type=str, default='[2, 3, 4, 5]')
-    parser.add_argument("--agent", type=int, default=3)
-    parser.add_argument("--turn", type=int, default=3)
-    parser.add_argument("--dataset", type=str, default="chess")
-    parser.add_argument("--experiment_type", type=str)
+    parser = argparse.ArgumentParser(description="the number of tokens")
+    parser.add_argument("--repeat", type=str, default='[1, 2, 3, 4, 5]', help="repeat time")
+    parser.add_argument("--agent", type=int, default=3, help="the number of agents")
+    parser.add_argument("--turn", type=int, default=3, help="which round")
+    parser.add_argument("--dataset", type=str, default="chess", help="dataset")
+    parser.add_argument("--experiment_type", type=str, default="main")
     parser.add_argument("--role", type=str, default="[-1]")
     parser.add_argument("--strategy", type=str, default="[-1]")
     parser.add_argument("--n_case", type=int, default=50)
@@ -60,46 +61,89 @@ if __name__ == '__main__':
     main(args)
 
 """
-python tokens.py --repeat [1,2,3,4,5] --dataset math --role [0]
-python tokens.py --repeat [1,2,3,4,5] --dataset math --role [1]
-python tokens.py --repeat [1,2,3,4,5] --dataset math --role [2]
-python tokens.py --repeat [1,2,3,4,5] --dataset math --role [3]
+# 按照社会
+python tokens.py --dataset math --role [0]
+python tokens.py --dataset math --role [1]
+python tokens.py --dataset math --role [2]
+python tokens.py --dataset math --role [3]
 
-python tokens.py --repeat [1,2,3,4,5] --dataset chess --role [0]
-python tokens.py --repeat [1,2,3,4,5] --dataset chess --role [1]
-python tokens.py --repeat [1,2,3,4,5] --dataset chess --role [2]
-python tokens.py --repeat [1,2,3,4,5] --dataset chess --role [3]
+python tokens.py --dataset mmlu --role [0]
+python tokens.py --dataset mmlu --role [1]
+python tokens.py --dataset mmlu --role [2]
+python tokens.py --dataset mmlu --role [3]
 
-python tokens.py --repeat [1,2,3,4,5] --dataset mmlu --role [0]
-python tokens.py --repeat [1,2,3,4,5] --dataset mmlu --role [1]
-python tokens.py --repeat [1,2,3,4,5] --dataset mmlu --role [2]
-python tokens.py --repeat [1,2,3,4,5] --dataset mmlu --role [3]
+python tokens.py --dataset chess --role [0]
+python tokens.py --dataset chess --role [1]
+python tokens.py --dataset chess --role [2]
+python tokens.py --dataset chess --role [3]
 
-python tokens.py --repeat [1,2,3,4,5] --dataset math --strategy "['000']"
-python tokens.py --repeat [1,2,3,4,5] --dataset math --strategy "['001']"
-python tokens.py --repeat [1,2,3,4,5] --dataset math --strategy "['010']"
-python tokens.py --repeat [1,2,3,4,5] --dataset math --strategy "['011']"
-python tokens.py --repeat [1,2,3,4,5] --dataset math --strategy "['100']"
-python tokens.py --repeat [1,2,3,4,5] --dataset math --strategy "['101']"
-python tokens.py --repeat [1,2,3,4,5] --dataset math --strategy "['110']"
-python tokens.py --repeat [1,2,3,4,5] --dataset math --strategy "['111']"
+python tokens.py --dataset math --strategy "['000']"
+python tokens.py --dataset math --strategy "['001']"
+python tokens.py --dataset math --strategy "['010']"
+python tokens.py --dataset math --strategy "['011']"
+python tokens.py --dataset math --strategy "['100']"
+python tokens.py --dataset math --strategy "['101']"
+python tokens.py --dataset math --strategy "['110']"
+python tokens.py --dataset math --strategy "['111']"
 
-python tokens.py --repeat [1,2,3,4,5] --dataset mmlu --strategy "['000']"
-python tokens.py --repeat [1,2,3,4,5] --dataset mmlu --strategy "['001']"
-python tokens.py --repeat [1,2,3,4,5] --dataset mmlu --strategy "['010']"
-python tokens.py --repeat [1,2,3,4,5] --dataset mmlu --strategy "['011']"
-python tokens.py --repeat [1,2,3,4,5] --dataset mmlu --strategy "['100']"
-python tokens.py --repeat [1,2,3,4,5] --dataset mmlu --strategy "['101']"
-python tokens.py --repeat [1,2,3,4,5] --dataset mmlu --strategy "['110']"
-python tokens.py --repeat [1,2,3,4,5] --dataset mmlu --strategy "['111']"
+python tokens.py --dataset mmlu --strategy "['000']"
+python tokens.py --dataset mmlu --strategy "['001']"
+python tokens.py --dataset mmlu --strategy "['010']"
+python tokens.py --dataset mmlu --strategy "['011']"
+python tokens.py --dataset mmlu --strategy "['100']"
+python tokens.py --dataset mmlu --strategy "['101']"
+python tokens.py --dataset mmlu --strategy "['110']"
+python tokens.py --dataset mmlu --strategy "['111']"
 
-python tokens.py --repeat [1,2,3,4,5] --dataset chess --strategy "['000']"
-python tokens.py --repeat [1,2,3,4,5] --dataset chess --strategy "['001']"
-python tokens.py --repeat [1,2,3,4,5] --dataset chess --strategy "['010']"
-python tokens.py --repeat [1,2,3,4,5] --dataset chess --strategy "['011']"
-python tokens.py --repeat [1,2,3,4,5] --dataset chess --strategy "['100']"
-python tokens.py --repeat [1,2,3,4,5] --dataset chess --strategy "['101']"
-python tokens.py --repeat [1,2,3,4,5] --dataset chess --strategy "['110']"
-python tokens.py --repeat [1,2,3,4,5] --dataset chess --strategy "['111']"
+python tokens.py --dataset chess --strategy "['000']"
+python tokens.py --dataset chess --strategy "['001']"
+python tokens.py --dataset chess --strategy "['010']"
+python tokens.py --dataset chess --strategy "['011']"
+python tokens.py --dataset chess --strategy "['100']"
+python tokens.py --dataset chess --strategy "['101']"
+python tokens.py --dataset chess --strategy "['110']"
+python tokens.py --dataset chess --strategy "['111']"
+
+python tokens.py --repeat [1,2,3] --dataset math --role [0]
+python tokens.py --repeat [1,2,3] --dataset math --role [1]
+python tokens.py --repeat [1,2,3] --dataset math --role [2]
+python tokens.py --repeat [1,2,3] --dataset math --role [3]
+
+python tokens.py --repeat [1,2,4] --dataset chess --role [0]
+python tokens.py --repeat [1,2,4] --dataset chess --role [1]
+python tokens.py --repeat [1,2,4] --dataset chess --role [2]
+python tokens.py --repeat [1,2,4] --dataset chess --role [3]
+
+python tokens.py --repeat [2,3,5] --dataset mmlu --role [0]
+python tokens.py --repeat [2,3,5] --dataset mmlu --role [1]
+python tokens.py --repeat [2,3,5] --dataset mmlu --role [2]
+python tokens.py --repeat [2,3,5] --dataset mmlu --role [3]
+
+python tokens.py --repeat [1,2,3] --dataset math --strategy "['000']"
+python tokens.py --repeat [1,2,3] --dataset math --strategy "['001']"
+python tokens.py --repeat [1,2,3] --dataset math --strategy "['010']"
+python tokens.py --repeat [1,2,3] --dataset math --strategy "['011']"
+python tokens.py --repeat [1,2,3] --dataset math --strategy "['100']"
+python tokens.py --repeat [1,2,3] --dataset math --strategy "['101']"
+python tokens.py --repeat [1,2,3] --dataset math --strategy "['110']"
+python tokens.py --repeat [1,2,3] --dataset math --strategy "['111']"
+
+python tokens.py --repeat [2,3,5] --dataset mmlu --strategy "['000']"
+python tokens.py --repeat [2,3,5] --dataset mmlu --strategy "['001']"
+python tokens.py --repeat [2,3,5] --dataset mmlu --strategy "['010']"
+python tokens.py --repeat [2,3,5] --dataset mmlu --strategy "['011']"
+python tokens.py --repeat [2,3,5] --dataset mmlu --strategy "['100']"
+python tokens.py --repeat [2,3,5] --dataset mmlu --strategy "['101']"
+python tokens.py --repeat [2,3,5] --dataset mmlu --strategy "['110']"
+python tokens.py --repeat [2,3,5] --dataset mmlu --strategy "['111']"
+
+python tokens.py --repeat [1,2,4] --dataset chess --strategy "['000']"
+python tokens.py --repeat [1,2,4] --dataset chess --strategy "['001']"
+python tokens.py --repeat [1,2,4] --dataset chess --strategy "['010']"
+python tokens.py --repeat [1,2,4] --dataset chess --strategy "['011']"
+python tokens.py --repeat [1,2,4] --dataset chess --strategy "['100']"
+python tokens.py --repeat [1,2,4] --dataset chess --strategy "['101']"
+python tokens.py --repeat [1,2,4] --dataset chess --strategy "['110']"
+python tokens.py --repeat [1,2,4] --dataset chess --strategy "['111']"
 
 """

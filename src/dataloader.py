@@ -1,3 +1,4 @@
+
 from glob import glob
 import numpy as np
 import random
@@ -8,9 +9,12 @@ import tiktoken
 
 class dataloader:
     FILE_PATH = {
-        "math": "./data/math/filter.pk",
-        "chess": "./data/chess/chess.json",
-        "mmlu": "./data/mmlu/data/test/high_school_*.csv"
+        # "math": "./data/math/filter.pk",
+        # "chess": "./data/chess/chess.json",
+        # "mmlu": "./data/mmlu/data/test/high_school_*.csv"
+        "math": "./eval_data/math.pkl",
+        "chess": "./eval_data/chess.pkl",
+        "mmlu": "./eval_data/mmlu.pkl",
     }
     def __init__(self, name:str, n_case:int=50):
         assert name.lower() in ["math","chess","mmlu"], f"dataset {name} is not a valid name."
@@ -44,6 +48,7 @@ class dataloader:
             assert False
 
     def regenerate(self, invalid_case_id:list, num: int=2):
+        """
         return:
             {
                 "t1":{"task_info", "answer", "ratio", "item_size"}，
@@ -143,7 +148,6 @@ class dataloader:
                 assert False
 
         """
-        return：
         [
             [{"task_info": (,), "answer": ""}, {"task_info": (,), "answer": ""}, {"task_info": (,), "answer": ""}, ...],
             [{"task_info": (,), "answer": ""}, {"task_info": (,), "answer": ""}, {"task_info": (,), "answer": ""}, ...],
@@ -154,8 +158,7 @@ class dataloader:
             assert self.dataset == "chess"
         else:                                   # math, mmlu
             assert self.dataset in ["math", "mmlu"]
-            """
-            candidate：
+            """candidate：
             {
                 "t0": {"task_info":[], "answer": []},
                 "t1": {"task_info":[], "answer": []},
@@ -193,6 +196,15 @@ class dataloader:
 
     def _load_chess(self):
         self._set_seed(seed=0)
+        print("data_path:", dataloader.FILE_PATH["chess"])
+        if dataloader.FILE_PATH["chess"].endswith("pkl"):
+            database = pickle.load(open(dataloader.FILE_PATH["chess"], "rb"))
+            assert isinstance(database, dict)
+            self.repeat_run = True
+            for i in range(len(database["task_info"])):
+                database["task_info"][i] = (database["task_info"][i][0], database["task_info"][i][0].split(" ")[-1], )
+                print(f"update chess item {i}: {database['task_info'][i]}")
+            return database
         db = json.load(open(dataloader.FILE_PATH["chess"]))["examples"]
         """
         db = {
@@ -208,7 +220,7 @@ class dataloader:
         answer = []
         sampled_idx = random.sample(list(range(len(db))), self.n_case)
         for idx in sampled_idx:
-            database.append((db[idx]["input"],))  
+            database.append((db[idx]["input"],))   
             answer.append(db[idx]["target"])
         return {
             "task_info": database,
@@ -243,7 +255,13 @@ class dataloader:
             else:
                 assert False
 
+        print("data_path:", dataloader.FILE_PATH["mmlu"])
         self._set_seed(seed=0)
+        if dataloader.FILE_PATH["mmlu"].endswith("pkl"):
+            database = pickle.load(open(dataloader.FILE_PATH["mmlu"], "rb"))
+            assert isinstance(database, dict)
+            self.repeat_run = True
+            return database
         files_name = glob(dataloader.FILE_PATH["mmlu"])
         ratio = [8, 8, 8, 8, 9, 9]
         assert len(files_name) == len(ratio)
@@ -280,6 +298,12 @@ class dataloader:
                     new[f"Level {level}"].extend(d[f"Level {level}"][t])
             return new
         self._set_seed(seed=0)
+        print("data_path:", dataloader.FILE_PATH["math"])
+        if dataloader.FILE_PATH["math"].endswith("pkl"):
+            database = pickle.load(open(dataloader.FILE_PATH["math"], "rb"))
+            assert isinstance(database, dict)
+            self.repeat_run = True
+            return database
         with open(dataloader.FILE_PATH["math"], "rb") as f:
             db = pickle.load(f)
         db = reshape(db)

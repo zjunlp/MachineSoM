@@ -11,6 +11,7 @@ import pickle
 class helper:
     dataset = None
     prompt = {
+        # Please remember it and don't forget it.
         "create_confident": "Imagine you are {} and {}. Please keep this in mind. If you understand please say ok only.",
         "create_temperate": "You are {} and {}. Please keep this in mind. If you understand please say ok only.",
     }
@@ -19,7 +20,6 @@ def debate_start(idx: list, agent_center: AgentDialogManagement, task_info):
     # template
     content = interaction_prompt[helper.dataset]["question"].format(*task_info)
     if helper.dataset == "math":
-        """{{ will be parsed {, so this line fixex it"""
         content = content.replace("Put your answer in the form \\boxed{answer}", "Put your answer in the form \\boxed{{answer}}")
     for index in idx:
         assert agent_center.agents[index][-1]["role"] == "assistant"
@@ -90,13 +90,13 @@ def _print(message):
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Agent')
-    parser.add_argument('--role', type=int, default=0)   
-    parser.add_argument('--dataset', type=str, default="mmlu") 
-    parser.add_argument('--repeat', type=int, default=1)    
-    parser.add_argument('--turn', type=int, default=3)     
-    parser.add_argument('--api_idx', type=int, default=0)   
-    parser.add_argument('--api_account', type=str, default=None)    
-    parser.add_argument('--experiment_type', type=str, default="main")  
+    parser.add_argument('--role', type=int, default=0)                  # [0,1,2,3] refers to the number of harmonies in a society.
+    parser.add_argument('--dataset', type=str, default="mmlu")          # chess math
+    parser.add_argument('--repeat', type=int, default=1)                # Labeling from 1 was used to indicate which was the first replicate of the experiment and was used to save the
+    parser.add_argument('--turn', type=int, default=3)                  # how many rounds
+    parser.add_argument('--api_idx', type=int, default=0)               # start index is 0, which api
+    parser.add_argument('--api_account', type=str, default=None)        # which account
+    parser.add_argument('--experiment_type', type=str, default="main")  # experiment type
     # ======================================================================
     parser.add_argument('--n_case', type=int, default=50)
     parser.add_argument('--model', type=str, default="gpt-3.5-turbo")
@@ -105,20 +105,20 @@ def parse_args():
     return parser.parse_args()
 
 def args_check(args):
-    assert args.role >= 0 and args.role <= 3, "role error"
-    assert args.dataset in ["mmlu","math","chess"], "dataset error"
-    assert args.turn >= 2, "turn error"
-    assert args.api_idx >=0, "api error"
-    print("*"*10, f"  {args.experiment_type} setting  ", "*"*10)
-    print(f"1. dataset: {args.dataset}\t repeat {args.repeat}")
-    print(f"2. Society: {args.role} Harmony\t {args.turn} Turn")
-    print(f"3. {args.agent} agent\tAPI: {args.api_idx}")
-    print(f"4. API account: {args.api_account}")
+    assert args.role >= 0 and args.role <= 3, "society error!"
+    assert args.dataset in ["mmlu","math","chess"], "dataset error!"
+    assert args.turn >= 2, "round error!"
+    assert args.api_idx >=0, "api error!"
+    print("*"*10, f"  {args.experiment_type} Experimental Type ", "*"*10)
+    print(f"1. datasets: {args.dataset}\tRepeat:{args.repeat}")
+    print(f"2. society: {args.role} Harmony\tRounds: {args.turn}")
+    print(f"3. the number of agents: {args.agent}\tAPI: {args.api_idx}")
+    print(f"4. api account:{args.api_account}")
     print(f"5. {args.n_case} cases")
+    print("*" * 10, f"{time.ctime()}", "*" * 10)
     print("*" * 10, f"{time.ctime()}", "*" * 10)
 
 def create_configs(args):
-    _print("creating configs......")
     dataset = args.dataset
     turn = args.turn
     agent_roles = agent_roles_datasets[dataset]
@@ -180,6 +180,7 @@ def simulate(key, args, agent_config, round_config):
             API_KEY=key,
         )
         agent_center.generate_agents(agent_config=agent_config)
+        # agent_center.generate_agents(agent_config=_dynamic_agent_roles(agent_config, data_loader, args, case_id))
         agent_center.parse_message(
             idx="all",
             memory=agent_center.send_message(
@@ -198,7 +199,6 @@ def simulate(key, args, agent_config, round_config):
             idx = []
             idx.extend(round_config[round_index]["debate"]["idx"])
             idx.extend(round_config[round_index]["reflection"]["idx"])
-            """send message"""
             memory = agent_center.send_message(idx=idx)
             if memory is None:
                 FLAG_NORMAL = False

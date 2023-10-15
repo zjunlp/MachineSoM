@@ -1,3 +1,4 @@
+
 import os
 import argparse
 from tqdm import tqdm
@@ -157,7 +158,6 @@ def simulate(key, args, agent_config, round_config, invalid_case_id, candidate_c
         group_id = data_loader.parse_group(invalid_case_id[case_id])
         item = candidate_case[group_id][cursor[group_id]]["task_info"]
         cursor[group_id] += 1
-        print("item:", item)
         FLAG_NORMAL = True
         for round_index in tqdm(range(args.turn+1)):
             agent_center.prepare_for_message(
@@ -182,12 +182,12 @@ def simulate(key, args, agent_config, round_config, invalid_case_id, candidate_c
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Agent')
-    parser.add_argument('--dataset', type=str, default="mmlu") 
-    parser.add_argument('--total_role', type=int, default=4)  
-    parser.add_argument('--total_repeat', type=int, default=3) 
-    parser.add_argument('--turn', type=int, default=3) 
-    parser.add_argument('--api_idx', type=int, default=0)  
-    parser.add_argument('--api_account', type=str, default=None) 
+    parser.add_argument('--dataset', type=str, default="mmlu")  # [mmlu, math, chess]
+    parser.add_argument('--total_role', type=int, default=4)   
+    parser.add_argument('--total_repeat', type=int, default=3)  
+    parser.add_argument('--turn', type=int, default=3)  
+    parser.add_argument('--api_idx', type=int, default=0) 
+    parser.add_argument('--api_account', type=str, default=None)  
     parser.add_argument('--experiment_type', type=str, default="main") 
     # ==============================================================
     parser.add_argument('--n_case', type=int, default=50)
@@ -229,7 +229,10 @@ def generate_case(args, invalid_case_id: list, num):
     return candidate, data_loader
 
 def merge_dataset(args, data_loader:dataloader, invalid_case_id, candidate_case):
+    """convert"""
+    # step-1 load data
     database = data_loader.database.copy()
+    # step-2 replace
     cursor = [0 for _ in range(len(data_loader.database["ratio"]))]
     for case_id in invalid_case_id:
         group = data_loader.parse_group(case_id)
@@ -238,7 +241,9 @@ def merge_dataset(args, data_loader:dataloader, invalid_case_id, candidate_case)
         database["answer"][case_id] = \
             candidate_case[group][cursor[group]]["answer"]
         cursor[group] += 1
+    # step-3 saving
     save_name = f"./results/{args.experiment_type}/{args.dataset}_data.pkl"
+    _print(f"saving {save_name} ......")
     with open(save_name, "wb") as f:
         pickle.dump(database, f)
 
@@ -247,6 +252,7 @@ def regenerate(args):
     if len(invalid_case_id) == 0:
         data_loader = dataloader(name=args.dataset)
         save_name = f"./results/{args.experiment_type}/{args.dataset}_data.pkl"
+        _print(f"saving {save_name} ......")
         with open(save_name, "wb") as f:
             pickle.dump(data_loader.database, f)
         return
@@ -269,6 +275,7 @@ def regenerate(args):
     )
 
 def test(args):
+    # print(find_invalid_case(args))
     print(
         generate_case(args, find_invalid_case(args))
     )
@@ -280,6 +287,7 @@ if __name__ == '__main__':
     regenerate(args)
 
 """
-nohup python -u regenerate.py --dataset math --api_idx 0 --api_account gpttest1> math_regenerate.txt 2>&1 & 
-nohup python -u regenerate.py --dataset mmlu --api_idx 0 --api_account gpttest2> mmlu_regenerate.txt 2>&1 &
+nohup python -u regenerate.py --dataset math --api_idx 0 --api_account mikedeangpt4> math_regenerate.txt 2>&1 & 3912657
+nohup python -u regenerate.py --dataset mmlu --api_idx 0 --api_account mikedeangpt5> mmlu_regenerate.txt 2>&1 & 3912045
+python -u regenerate.py --dataset chess --api_idx 0 --api_account mikedeangpt5
 """

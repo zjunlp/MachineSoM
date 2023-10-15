@@ -1,12 +1,8 @@
 openai_api = {
-    "your.account.1":[
-        'key1',
-        'key2',
-        'key3',
+    "your_account_1":[
+        "api_1", "api_2", 
     ],
-    "your.account.2":[
-        'key1',
-        'key2',
-        'key3',
-    ],
+    "your_account_2":[
+        "api_1", "api_2", "api_3"
+    ]
 }

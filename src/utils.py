@@ -119,9 +119,8 @@ class AgentDialogManagement:
             except Exception as e:
                 self._print_log(e)
                 if "maximum context length is 4097 tokens" in str(e):
-                    self._print_log("maximum length exceeded! skip!")
                     return None
-                self._print_log(f"Please wait {self.RETRY_TIME} seconds and resend later...")
+                self._print_log(f"waiting for {self.RETRY_TIME} seconds...")
                 time.sleep(self.RETRY_TIME)
         return memory
 
@@ -148,7 +147,6 @@ class AgentDialogManagement:
             self.prompt["reflection"][fn](idx, self, task_info)
 
     def _prepare_wait(self, idx, fn, task_info):
-        """准备wait"""
         """do nothing"""
         return
 

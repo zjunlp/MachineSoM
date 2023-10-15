@@ -15,6 +15,7 @@ agent_characters = {
     "confident": "are confident in your answer and often persuades other agents to believe in you"
 }
 
+
 interaction_prompt = {
     "mmlu":{
         "question": "Can you answer the following question as accurately as possible? {}: A) {}, B) {}, C) {}, D) {} Explain your answer, putting the answer in the form (X) at the end of your response.",
@@ -36,7 +37,7 @@ interaction_prompt = {
         "reflection": "Can you double check that your answer is correct? Please reiterate your answer, with your answer in the form \\boxed{{answer}}, at the end of your response.",
     },
     "chess":{
-        "question": "Given the chess game \"{}\", give one valid destination square for the chess piece at. Give a one line explanation of why your destination square is a valid move. State your final answer in a newline with a 2 letter response following the regex [a-h][1-8]. ",
+        "question": "Given the chess game \"{}\", give one valid destination square for the chess piece at \"{}\". Give a one line explanation of why your destination square is a valid move. State your final answer in a newline with a 2 letter response following the regex [a-h][1-8]. ",
         "debate": [
             "Here are destination square suggestions from other agents:",
             "\n\nCan you double check that your destination square is a valid move? Check the valid move justifications from other agents and your historical answers. State your final answer in a newline with a 2 letter response following the regex [a-h][1-8]."

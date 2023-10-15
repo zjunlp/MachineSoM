@@ -16,9 +16,9 @@ Code for the paper *[Exploring Collaboration Mechanisms for LLM Agents: A Social
 
 ## *🎉 Quick Links*
 
-- [🛠️ Requirements & Dataset]()
-- [🚴 How to run]()
-- [👋 Cite]()
+- [🛠️ Requirements & Dataset](https://github.com/zjunlp/MachineSoM/tree/main#%EF%B8%8F-requirements--dataset)
+- [🚴 How to run](https://github.com/zjunlp/MachineSoM/tree/main#-how-to-run)
+- [👋 Cite](https://github.com/zjunlp/MachineSoM/tree/main#-cite)
 
 
 

@@ -1,4 +1,9 @@
+
+![case](figs/gif.gif)
+
+
 # 🧩 MachineSoM
+
 Code for the paper *[Exploring Collaboration Mechanisms for LLM Agents: A Social Psychology View](https://arxiv.org/abs/2310.02124)*.
 
 ![settings](figs/setting.jpg)

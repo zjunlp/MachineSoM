@@ -128,6 +128,7 @@ Here is a brief overview of each file in the folder `src`:
    ```
 
    If we conduct 3 rounds of interaction, there will be a total of 5 questions and answers with openai. Therefore, the odd number (the index of the first question is set to 0) must be the agent's reply. Therefore, `--which_turn` is 9, which means it is the third round of interaction agent's reply, that is, the last answer.
+   > If you want to evaluate the metric `cost` by tokens, just run the code `src/token.sh` rather than `evaluate.py`.
 
 
 

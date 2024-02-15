@@ -4,7 +4,7 @@
 
 # 🧩 MachineSoM
 
-Code for the paper *[Exploring Collaboration Mechanisms for LLM Agents: A Social Psychology View](https://arxiv.org/abs/2310.02124)*.
+Code for the paper "Exploring Collaboration Mechanisms for LLM Agents: A Social Psychology View".
 
 ![settings](figs/setting.jpg)
 
@@ -16,7 +16,7 @@ Code for the paper *[Exploring Collaboration Mechanisms for LLM Agents: A Social
 
 ## *📬 News!*
 
-- **[2023.10.03]** The paper *[Exploring Collaboration Mechanisms for LLM Agents: A Social Psychology View](https://arxiv.org/abs/2310.02124)* is published.
+- **[2023.10.03]** The paper "Exploring Collaboration Mechanisms for LLM Agents: A Social Psychology View" is released.
 - **[2023.07.13] MaSoM code is released!**
 
 ## *🎉 Quick Links*
@@ -132,17 +132,3 @@ Here is a brief overview of each file in the folder `src`:
 
 
 
-## *👋 Cite*
-
-If you use or extend our work, please cite the paper as follows:
-
-```bibtex
-@misc{zhang2023exploring,
-      title={Exploring Collaboration Mechanisms for LLM Agents: A Social Psychology View}, 
-      author={Jintian Zhang and Xin Xu and Shumin Deng},
-      year={2023},
-      eprint={2310.02124},
-      archivePrefix={arXiv},
-      primaryClass={cs.CL}
-}
-```

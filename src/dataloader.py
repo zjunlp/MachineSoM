@@ -9,9 +9,6 @@ import tiktoken
 
 class dataloader:
     FILE_PATH = {
-        # "math": "./data/math/filter.pk",
-        # "chess": "./data/chess/chess.json",
-        # "mmlu": "./data/mmlu/data/test/high_school_*.csv"
         "math": "./eval_data/math.pkl",
         "chess": "./eval_data/chess.pkl",
         "mmlu": "./eval_data/mmlu.pkl",
@@ -49,6 +46,7 @@ class dataloader:
 
     def regenerate(self, invalid_case_id:list, num: int=2):
         """
+
         return:
             {
                 "t1":{"task_info", "answer", "ratio", "item_size"}，
@@ -148,6 +146,7 @@ class dataloader:
                 assert False
 
         """
+        return：
         [
             [{"task_info": (,), "answer": ""}, {"task_info": (,), "answer": ""}, {"task_info": (,), "answer": ""}, ...],
             [{"task_info": (,), "answer": ""}, {"task_info": (,), "answer": ""}, {"task_info": (,), "answer": ""}, ...],
@@ -158,7 +157,7 @@ class dataloader:
             assert self.dataset == "chess"
         else:                                   # math, mmlu
             assert self.dataset in ["math", "mmlu"]
-            """candidate：
+            """
             {
                 "t0": {"task_info":[], "answer": []},
                 "t1": {"task_info":[], "answer": []},
@@ -291,6 +290,7 @@ class dataloader:
     def _load_math(self):
         types = ["algebra", "counting_and_probability", "geometry", "intermediate_algebra", "number_theory", "prealgebra", "precalculus"]
         def reshape(d):
+            """按照level展平"""
             new = {}
             for level in range(3,6):
                 new[f"Level {level}"] = []

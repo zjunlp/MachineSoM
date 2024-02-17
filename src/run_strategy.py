@@ -1,16 +1,13 @@
-
-import os
-import argparse
-from tqdm import tqdm
 import time
-from utils import decimal_to_binary
-from dataloader import dataloader
-from api import openai_api
-from utils import AgentDialogManagement
-import pickle
-from prompt import agent_roles_datasets, agent_characters, interaction_prompt
 
-save_dir = "./results/main"
+from utils import AgentDialogManagement, decimal_to_binary, isexist
+from tqdm import tqdm
+from api import openai_api
+import argparse
+from prompt import agent_roles_datasets, agent_characters, interaction_prompt
+from dataloader import dataloader
+import pickle
+import random
 
 class helper:
     dataset = None
@@ -21,9 +18,11 @@ class helper:
     }
 
 def debate_start(idx: list, agent_center: AgentDialogManagement, task_info):
+    """Send the same question to every agent without involving answer concatenation."""
     # template
     content = interaction_prompt[helper.dataset]["question"].format(*task_info)
     if helper.dataset == "math":
+        """The "{{" is interpreted as "{", so it needs to be doubled, and the whole issue only occurs when sending the question."""
         content = content.replace("Put your answer in the form \\boxed{answer}", "Put your answer in the form \\boxed{{answer}}")
     for index in idx:
         assert agent_center.agents[index][-1]["role"] == "assistant"
@@ -32,10 +31,12 @@ def debate_start(idx: list, agent_center: AgentDialogManagement, task_info):
         )
 
 def debate_next(idx: list, agent_center: AgentDialogManagement, task_info):
+    """Loading the agent_center directly will result in an error because at this point "-1" is the user, since they are added sequentially."""
     memory = []
     for cnt, index in enumerate(idx):
         assert agent_center.agents[index][-1][
                    "role"] == "assistant", f"{agent_center.agents[index][-1]['role']}!=assistant"
+        """Append the content from other agents to the end."""
         other_index = idx[0:cnt] + idx[cnt + 1:]
         # template
         content = interaction_prompt[helper.dataset]["debate"][0]
@@ -77,6 +78,7 @@ def reflection_refine(idx: list, agent_center: AgentDialogManagement, task_info)
         agent_center.agents[index].append({"role": "user", "content": "reflection refine"})
 
 def init(args):
+    """Initialize some parameters"""
     helper.dataset = args.dataset
     helper.prompt["debate"] = {
         "start": debate_start,
@@ -92,9 +94,46 @@ def init(args):
 def _print(message):
     print(f"[{time.ctime()}] {message}")
 
+def parse_args():
+    '''python two_agent_generate.py --role 2 --dataset chess --repeat 1 --turn 3 --api_idx 0 --api_account mike --experiment_type rebuttal --agent 2 --model llama'''
+    parser = argparse.ArgumentParser(description='Agent')
+    parser.add_argument('--role', type=int, default=0)      # [0,1,2,3] refers to the number of easy-going agents in a society.
+    parser.add_argument('--dataset', type=str, default="mmlu")  # chess math
+    parser.add_argument('--repeat', type=int, default=1)    # Start labeling from 1, used to indicate the current repeat experiment number; this parameter is also used for saving purposes.
+    parser.add_argument('--turn', type=int, default=3)      # collaboration round
+    parser.add_argument('--api_idx', type=int, default=0)   # start from 0
+    parser.add_argument('--api_account', type=str, default='taobao')    # which account
+    parser.add_argument('--experiment_type', type=str, default="main")  # experiment type, also used for saving
+    parser.add_argument('--strategy_id', type=str, default="000")       # strategy_id
+    parser.add_argument('--case_id', type=str, default=None)            # case_id
+    # ======================================================================
+    parser.add_argument('--n_case', type=int, default=50)
+    parser.add_argument('--model', type=str, default="gpt-3.5-turbo")
+    parser.add_argument('--agent', type=int, default=3)
+    parser.add_argument('--save_path', type=str, default=None)
+    return parser.parse_args()
+
+def args_check(args):
+    assert args.role >= 0 and args.role <= 3
+    assert args.dataset in ["mmlu","math","chess"]
+    assert args.turn >= 2
+    assert args.api_idx >=0
+    args.case_id = eval(args.case_id)
+    print("*"*10, f"  setting: {args.experiment_type}  ", "*"*10)
+    print(f"1. dataset: {args.dataset}\tRepeat: {args.repeat}")
+    print(f"2. society: {args.role} Harmony\tCollaboration Round: {args.turn}")
+    print(f"3. number of agents: {args.agent}\tAPI: {args.api_idx}")
+    print(f"4. api account: {args.api_account}")
+    print(f"5. number of cases: {args.n_case}")
+    print(f"6. strategies: {args.strategy_id}")
+    print(f"7. cases: {args.case_id}")
+    print("*" * 10, f"{time.ctime()}", "*" * 10)
+
 def create_configs(args):
+    _print("creating agent configs ......")
     dataset = args.dataset
     turn = args.turn
+    """role play"""
     agent_roles = agent_roles_datasets[dataset]
     agents_configs = {
         "3_harmony": [{"role": agent_roles["expert"], "character": agent_characters["temperate"]},
@@ -111,41 +150,57 @@ def create_configs(args):
                       {"role": agent_roles["expert"], "character": agent_characters["confident"]}],
     }
     rounds_configs = []
-    for i in range(0, 2**turn):
-        situation = decimal_to_binary(i, turn)
-        rounds_configs.append(
-            [{
-                "debate": {"idx": [0, 1, 2], "fn": "start"},
-                "reflection": {"idx": [], "fn": None},
-                "wait": {"idx": [], "fn": ""}
-            }]
-        )
-        for _ in situation:
-            if _ == '1':
-                rounds_configs[-1].append({
-                    "debate": {"idx": [], "fn": None},
-                    "reflection": {"idx": [0, 1, 2], "fn": "start"},
+    
+    situation = args.strategy_id
+    rounds_configs.append(
+        [{
+            "debate": {"idx": [0, 1, 2], "fn": "start"},
+            "reflection": {"idx": [], "fn": None},
+            "wait": {"idx": [], "fn": ""}
+        }]
+    )
+    for _ in situation:
+        if _ == '1':
+            # reflect = random.choice(list(range(args.agent)))
+            rounds_configs[-1].append(
+                {
+                    "debate": {"idx": [], "fn": None}, 
+                    "reflection": {"idx": list(range(args.agent)), "fn": "start"}, 
                     "wait": {"idx": [], "fn": ""}
-                })
-            elif _ == '0':
-                rounds_configs[-1].append({
-                    "debate": {"idx": [0, 1, 2], "fn": "next"},
-                    "reflection": {"idx": [], "fn": None},
-                     "wait": {"idx": [], "fn": ""}
-                })
-            else:
-                assert False, "Error!"
-
+                }
+            )
+        elif _ == '0':
+            reflect = random.choice(list(range(args.agent)))
+            rounds_configs[-1].append(
+                {
+                    "debate": {"idx": list(set(range(args.agent))-set([reflect])), "fn": "next"}, 
+                    "reflection": {"idx": [reflect], "fn": "start"}, 
+                    "wait": {"idx": [], "fn": ""}}
+            )
     return agents_configs, rounds_configs
 
-def simulate(key, args, agent_config, round_config, invalid_case_id, candidate_case, data_loader:dataloader):
-    cursor = [0 for _ in range(len(data_loader.database["ratio"]))]
-    for case_id in range(len(invalid_case_id)):
+def simulate(key, args, agent_config, round_config):
+    def _dynamic_agent_roles(agent_config, data_loader: dataloader, args, idx):
+        if args.dataset == "mmlu":
+            for i in range(len(agent_config)):
+                agent_config[i]["role"] = data_loader.database["role"][idx]
+        return agent_config
+
+    data_loader = dataloader(name=args.dataset, n_case=args.n_case)
+    for case_id in args.case_id:
+        file_save_names = f"{args.save_path}_case_{case_id}.pkl"
+        shut_file_save_names = f"{args.save_path}_case_{case_id}_shutdown.pkl"
+        if isexist(file_save_names):
+            print(f"skip `{file_save_names}` because of existence.")
+            continue
+        if isexist(shut_file_save_names):
+            pass
         agent_center = AgentDialogManagement(
             prompt=helper.prompt,
             num_agents=args.agent,
             default_model=args.model,
             API_KEY=key,
+            llama_api=key
         )
         agent_center.generate_agents(agent_config=agent_config)
         agent_center.parse_message(
@@ -154,10 +209,7 @@ def simulate(key, args, agent_config, round_config, invalid_case_id, candidate_c
                 idx="all"
             )
         )
-        print(agent_center.agents)
-        group_id = data_loader.parse_group(invalid_case_id[case_id])
-        item = candidate_case[group_id][cursor[group_id]]["task_info"]
-        cursor[group_id] += 1
+        item = data_loader[case_id]
         FLAG_NORMAL = True
         for round_index in tqdm(range(args.turn+1)):
             agent_center.prepare_for_message(
@@ -176,118 +228,28 @@ def simulate(key, args, agent_config, round_config, invalid_case_id, candidate_c
                 memory=memory
             )
         if FLAG_NORMAL:
-            agent_center.save(path=f"{args.save_path}_case_{case_id+args.n_case}_replace_{invalid_case_id[case_id]}")
+            agent_center.save(path=f"{args.save_path}_case_{case_id}")
         else:
-            agent_center.save(path=f"{args.save_path}_case_{case_id+args.n_case}_replace_{invalid_case_id[case_id]}_shutdown")
+            agent_center.save(path=f"{args.save_path}_case_{case_id}_shutdown")
 
-def parse_args():
-    parser = argparse.ArgumentParser(description='Agent')
-    parser.add_argument('--dataset', type=str, default="mmlu")  # [mmlu, math, chess]
-    parser.add_argument('--total_role', type=int, default=4)   
-    parser.add_argument('--total_repeat', type=int, default=3)  
-    parser.add_argument('--turn', type=int, default=3)  
-    parser.add_argument('--api_idx', type=int, default=0) 
-    parser.add_argument('--api_account', type=str, default=None)  
-    parser.add_argument('--experiment_type', type=str, default="main") 
-    # ==============================================================
-    parser.add_argument('--n_case', type=int, default=50)
-    parser.add_argument('--model', type=str, default="gpt-3.5-turbo")
-    parser.add_argument('--agent', type=int, default=3)
-    parser.add_argument('--save_path', type=str, default=None)
-    return parser.parse_args()
-
-def check_args(args):
-    assert args.dataset.lower() in ["mmlu", "math", "chess"]
-
-def find_invalid_case(args):
-    def _parse_case_id(file_name:str) -> int:
-        items = file_name.split("_")
-        return int(items[-2])
-    dataset = args.dataset
-    repeat = len(os.listdir(f"{save_dir}/{dataset}"))
-    invalid_case = []
-    for r in range(1, repeat+1):
-        dir_name = f"{save_dir}/{dataset}/{r}"
-        files_list = os.listdir(dir_name)
-        filter_files_list = []
-        for item in files_list:
-            if "token.pkl" not in item and "shutdown.pkl" in item:
-                filter_files_list.append(item)
-        for item in filter_files_list:
-            invalid_case.append(_parse_case_id(item))
-    return sorted(list(set(invalid_case)))
-
-def generate_case(args, invalid_case_id: list, num):
-    data_loader = dataloader(name=args.dataset)
-    """
-    [
-        [{"task_info": (,), "answer": ""}, {"task_info": (,), "answer": ""}, {"task_info": (,), "answer": ""}, ...],
-        [{"task_info": (,), "answer": ""}, {"task_info": (,), "answer": ""}, {"task_info": (,), "answer": ""}, ...],
-    ]
-    """
-    candidate = data_loader.regenerate(invalid_case_id, num=num)
-    return candidate, data_loader
-
-def merge_dataset(args, data_loader:dataloader, invalid_case_id, candidate_case):
-    """convert"""
-    # step-1 load data
-    database = data_loader.database.copy()
-    # step-2 replace
-    cursor = [0 for _ in range(len(data_loader.database["ratio"]))]
-    for case_id in invalid_case_id:
-        group = data_loader.parse_group(case_id)
-        database["task_info"][case_id] = \
-            candidate_case[group][cursor[group]]["task_info"]
-        database["answer"][case_id] = \
-            candidate_case[group][cursor[group]]["answer"]
-        cursor[group] += 1
-    # step-3 saving
-    save_name = f"./results/{args.experiment_type}/{args.dataset}_data.pkl"
-    _print(f"saving {save_name} ......")
-    with open(save_name, "wb") as f:
-        pickle.dump(database, f)
-
-def regenerate(args):
-    invalid_case_id = find_invalid_case(args)
-    if len(invalid_case_id) == 0:
-        data_loader = dataloader(name=args.dataset)
-        save_name = f"./results/{args.experiment_type}/{args.dataset}_data.pkl"
-        _print(f"saving {save_name} ......")
-        with open(save_name, "wb") as f:
-            pickle.dump(data_loader.database, f)
-        return
-    candidate_case, data_loader = generate_case(args, invalid_case_id, num=3)
+def main():
+    args = parse_args()
+    args_check(args)
+    init(args)
     agents_configs, rounds_configs = create_configs(args)
+    cur_agent_config = agents_configs[f"{args.role}_harmony"]
     key = openai_api[args.api_account][args.api_idx]
-    strategy_labels = [decimal_to_binary(i, args.turn) for i in range(2 ** args.turn)]
-    for r in range(1, args.total_repeat+1):
-        for role in range(args.total_role):
-            cur_agent_config = agents_configs[f"{role}_harmony"]
-            for idx, cur_round_config in enumerate(rounds_configs):
-                args.save_path = f"./results/{args.experiment_type}/{args.dataset}/{r}/" \
-                                 f"{role}_harmony_{args.agent}_agents_{args.turn}_turns_{strategy_labels[idx]}_strategy"
-                simulate(
-                    key=key, args=args, agent_config=cur_agent_config, round_config=cur_round_config,
-                    invalid_case_id=invalid_case_id, candidate_case=candidate_case, data_loader=data_loader
-                )
-    merge_dataset(
-        args, data_loader, invalid_case_id, candidate_case
-    )
+    strategy_labels = [decimal_to_binary(i, args.turn) for i in range(2**args.turn)]
+    strategy_labels = args.strategy_id
+    for idx, cur_round_config in enumerate(rounds_configs):
+        args.save_path = f"./results/{args.experiment_type}/{args.dataset}/{args.repeat}/" \
+                         f"{args.role}_harmony_{args.agent}_agents_{args.turn}_turns_{strategy_labels}_strategy"
+        simulate(key=key, args=args, agent_config=cur_agent_config, round_config=cur_round_config)
 
-def test(args):
-    # print(find_invalid_case(args))
-    print(
-        generate_case(args, find_invalid_case(args))
-    )
+def read():
+    file_name = ""
+    contexts = pickle.load(open(file_name, "rb"))
+    print(contexts)
 
 if __name__ == '__main__':
-    args = parse_args()
-    check_args(args)
-    init(args)
-    regenerate(args)
-
-"""
-nohup python -u regenerate.py --dataset math --api_idx 0 --api_account mikedeangpt4> math_regenerate.txt 2>&1 & 3912657
-nohup python -u regenerate.py --dataset mmlu --api_idx 0 --api_account mikedeangpt5> mmlu_regenerate.txt 2>&1 & 3912045
-python -u regenerate.py --dataset chess --api_idx 0 --api_account mikedeangpt5
-"""
+    main()

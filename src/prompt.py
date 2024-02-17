@@ -1,3 +1,4 @@
+
 agent_roles_datasets = {
     "mmlu":{
         "expert": "an expert in biology, chemistry, computer science, mathematics, physics"
@@ -43,5 +44,13 @@ interaction_prompt = {
             "\n\nCan you double check that your destination square is a valid move? Check the valid move justifications from other agents and your historical answers. State your final answer in a newline with a 2 letter response following the regex [a-h][1-8]."
         ],
         "reflection": "Can you double check that your destination square is a valid move? Check the valid move justifications from your historical answers. State your final answer in a newline with a 2 letter response following the regex [a-h][1-8].",
+    },
+    "csqa":{
+        "question": "",
+        "debate": [
+            "",
+            ""
+        ],
+        "reflection": ""
     }
 }

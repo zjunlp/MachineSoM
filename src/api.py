@@ -1,8 +1,15 @@
+
 openai_api = {
-    "your_account_1":[
-        "api_1", "api_2", 
+    'replicate':[
+        'your api',
     ],
-    "your_account_2":[
-        "api_1", "api_2", "api_3"
+    "dashscope":[
+        'your api',
+    ],
+    "openai":[
+        'your api',
+    ],
+    "anyscale": [
+        'your api',
     ]
 }

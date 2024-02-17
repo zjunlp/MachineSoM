@@ -3,3 +3,5 @@ tqdm
 tiktoken
 pandas
 numpy
+wordcloud
+torch

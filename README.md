@@ -43,12 +43,12 @@ Here is a brief overview of each file in the folder `src`:
 
 ```python
 # Core Code
-|- api.py			    # API for storing the experiments
-|- dataloader.py	    # Load datasets for experiments
-|- evaluate.py		    # Evaluate the results of the experiment
-|- prompt.py		    # Stores all the prompts involved in the experiment.
-|- utils.py			    # The management center of the agents.
-|- run_main.py		    # Simulate a society of agents using different collaborative strategies to solve problems (main experiment)
+|- api.py               # API for storing the experiments
+|- dataloader.py        # Load datasets for experiments
+|- evaluate.py          # Evaluate the results of the experiment
+|- prompt.py            # Stores all the prompts involved in the experiment.
+|- utils.py             # The management center of the agents.
+|- run_main.py          # Simulate a society of agents using different collaborative strategies to solve problems (main experiment)
 |- run_agent.py         # Exploring the Impact of Agent Quantity
 |- run_strategy.py      # All agents can adopt different thinking patterns for collaboration
 

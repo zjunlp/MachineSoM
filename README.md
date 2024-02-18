@@ -17,7 +17,7 @@ Code for the paper "Exploring Collaboration Mechanisms for LLM Agents: A Social 
 ## *📬 News!*
 
 - **[2023.10.03]** The paper "Exploring Collaboration Mechanisms for LLM Agents: A Social Psychology View" is released.
-- **[2023.07.13] MaSoM code is released!**
+- **[2023.07.13] MachineSoM code is released!**
 
 ## *🎉 Quick Links*
 

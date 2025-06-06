@@ -145,10 +145,10 @@ Here is a brief overview of each file in the folder `src`:
                   Bryan Hooi and
                   Shumin Deng},
   title        = {Exploring Collaboration Mechanisms for {LLM} Agents: {A} Social Psychology View},
-  booktitle    = {{ACL}},
-  pages        = {},
+  booktitle    = {{ACL} {(1)}},
+  pages        = {14544--14607},
   publisher    = {Association for Computational Linguistics},
   year         = {2024},
-  url          = {https://arxiv.org/abs/2310.02124}
+  url          = {[https://aclanthology.org/2024.acl-long.782/](https://aclanthology.org/2024.acl-long.782/)}
 }
 ```
